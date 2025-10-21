@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:curved_labeled_navigation_bar/curved_navigation_bar.dart';
+import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
+
+// Import halaman lain
+import 'features/edukasi.dart';
+import 'profile/setting_acc.dart';
+import 'auth/login_page.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -12,8 +17,21 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter + Python Demo',
-      home: const HomePage(),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamily: 'Poppins',
+        primaryColor: const Color(0xFFD6D588),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFD6D588),
+        ),
+      ),
+      // 🔹 Mulai dari halaman Login
+      home: const LoginPage(),
+      // 🔹 Define routes untuk navigasi
+      routes: {
+        '/home': (context) => const HomePage(),
+        '/login': (context) => const LoginPage(),
+      },
     );
   }
 }
@@ -26,38 +44,56 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String message = "Loading...";
+  int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    fetchMessage();
-  }
-
-  Future<void> fetchMessage() async {
-    final url = Uri.parse("http://127.0.0.1:8000/"); // URL backend kamu
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      setState(() {
-        message = jsonDecode(response.body)['message'];
-      });
-    } else {
-      setState(() {
-        message = "Gagal mengambil data";
-      });
-    }
-  }
+  // ✅ Daftar halaman untuk tiap tab
+  final List<Widget> _pages = [
+    const Center(child: Text('Home Page')),
+    const EdukasiPage(), // 🔹 Sudah terhubung ke file edukasi.dart
+    const Center(child: Text('Deteksi Page')),
+    const Center(child: Text('Jelajahi Page')),
+    const SettingAccPage(), // 🔹 Halaman profil
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Flutter + Python")),
-      body: Center(
-        child: Text(
-          message,
-          style: const TextStyle(fontSize: 20),
-        ),
+      backgroundColor: const Color(0xFFFFFFFF),
+      body: _pages[_selectedIndex],
+
+      // 🔹 Curved Navigation Bar
+      bottomNavigationBar: CurvedNavigationBar(
+        backgroundColor: const Color(0xFFFFFFFF),
+        color: const Color(0xFFD6D588),
+        buttonBackgroundColor: const Color(0xFFD6D588),
+        animationDuration: const Duration(milliseconds: 300),
+        items: const [
+          CurvedNavigationBarItem(
+            child: Icon(Icons.home_outlined),
+            label: 'Home',
+          ),
+          CurvedNavigationBarItem(
+            child: Icon(Icons.description_outlined),
+            label: 'Edukasi',
+          ),
+          CurvedNavigationBarItem(
+            child: Icon(Icons.document_scanner_outlined),
+            label: 'Deteksi',
+          ),
+          CurvedNavigationBarItem(
+            child: Icon(Icons.location_on_outlined),
+            label: 'Jelajahi',
+          ),
+          CurvedNavigationBarItem(
+            child: Icon(Icons.perm_identity),
+            label: 'Personal',
+          ),
+        ],
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
       ),
     );
   }
