@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SettingAccPage extends StatelessWidget {
-  const SettingAccPage({Key? key}) : super(key: key);
+  const SettingAccPage({super.key});
 
   @override
   Widget build(BuildContext context) {
