@@ -4,7 +4,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 class DetailRambuScreen extends StatefulWidget {
   final Map<String, dynamic> rambu;
 
-  const DetailRambuScreen({Key? key, required this.rambu}) : super(key: key);
+  const DetailRambuScreen({super.key, required this.rambu});
 
   @override
   State<DetailRambuScreen> createState() => _DetailRambuScreenState();
@@ -46,7 +46,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
       setState(() {
         isSpeaking = false;
       });
-      print("TTS Error: $msg");
+      debugPrint("TTS Error: $msg");
     });
   }
 
@@ -63,7 +63,8 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
       await flutterTts.speak(textToSpeak);
     } catch (e) {
-      print("Error speaking: $e");
+      debugPrint("Error speaking: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal memutar audio: $e'),
@@ -128,7 +129,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -180,7 +181,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

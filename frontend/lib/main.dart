@@ -8,7 +8,6 @@ import 'profile/setting_acc.dart';
 import 'auth/login_page.dart'; 
 import 'auth/regis.dart';
 import 'features/beranda.dart';
-import 'features/detailrambu.dart';
 
 void main() {
   runApp(const MyApp());
