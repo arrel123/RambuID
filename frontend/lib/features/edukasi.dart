@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'detailrambu.dart';
 
 class EdukasiPage extends StatefulWidget {
-  const EdukasiPage({super.key});
+  final String? initialCategory;
+
+  const EdukasiPage({super.key, this.initialCategory});
 
   @override
   State<EdukasiPage> createState() => _EdukasiPageState();
@@ -19,36 +22,48 @@ class _EdukasiPageState extends State<EdukasiPage> {
     'Perintah'
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    selectedTab = widget.initialCategory ?? 'Semua'; 
+  }
+
   final List<Map<String, dynamic>> rambuData = [
     {
       'image': 'assets/images/penyeberangan_pejalan_kaki.png',
       'title': 'Penyeberangan\npejalan\nkaki',
-      'category': 'Peringatan'
+      'category': 'Peringatan',
+      'description': 'Memberi peringatan bahwa di depan ada penyeberangan pejalan kaki.',
     },
     {
       'image': 'assets/images/jalan_tidak_rata.png',
       'title': 'Jalan tidak\nrata',
-      'category': 'Peringatan'
+      'category': 'Peringatan',
+      'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
     },
     {
       'image': 'assets/images/penyeberangan_pejalan_kaki.png',
       'title': 'Penyeberangan\npejalan\nkaki',
-      'category': 'Peringatan'
+      'category': 'Peringatan',
+      'description': 'Memberi peringatan bahwa di depan ada penyeberangan pejalan kaki.',
     },
     {
       'image': 'assets/images/dilarang_belok_kiri.png',
       'title': 'Dilarang belok\nkiri',
-      'category': 'Larangan'
+      'category': 'Larangan',
+      'description': 'Melarang kendaraan untuk belok kiri di area tersebut.',
     },
     {
       'image': 'assets/images/dilarang_parkir.png',
       'title': 'Dilarang Parkir',
-      'category': 'Larangan'
+      'category': 'Larangan',
+      'description': 'Melarang Kendaraan Parkir Di Area Tertentu Untuk Menjaga Kelancaran Lalu Lintas.',
     },
     {
       'image': 'assets/images/dilarang_putar_balik.png',
       'title': 'Dilarang putar\nbalik',
-      'category': 'Larangan'
+      'category': 'Larangan',
+      'description': 'Melarang kendaraan untuk putar balik di area tersebut.',
     },
   ];
 
@@ -68,6 +83,15 @@ class _EdukasiPageState extends State<EdukasiPage> {
     }
 
     return filtered;
+  }
+
+  void _navigateToDetail(BuildContext context, Map<String, dynamic> rambu) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetailRambuScreen(rambu: rambu),
+      ),
+    );
   }
 
   @override
@@ -177,35 +201,38 @@ class _EdukasiPageState extends State<EdukasiPage> {
               itemCount: getFilteredData().length,
               itemBuilder: (context, index) {
                 final item = getFilteredData()[index];
-                return Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8E8E8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Image.asset(
-                            item['image'],
-                            fit: BoxFit.contain,
+                return GestureDetector(
+                  onTap: () => _navigateToDetail(context, item),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8E8E8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Image.asset(
+                              item['image'],
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          item['title'],
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            item['title'],
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },

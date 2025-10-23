@@ -6,6 +6,9 @@ import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
 import 'features/edukasi.dart';
 import 'profile/setting_acc.dart';
 import 'auth/login_page.dart'; 
+import 'auth/regis.dart';
+import 'features/beranda.dart';
+import 'features/detailrambu.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,6 +34,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/home': (context) => const HomePage(),
         '/login': (context) => const LoginPage(),
+        '/register': (context) => const RegisPage(),
       },
     );
   }
@@ -48,7 +52,7 @@ class _HomePageState extends State<HomePage> {
 
   // ✅ Daftar halaman untuk tiap tab
   final List<Widget> _pages = [
-    const Center(child: Text('Home Page')),
+    const KatalogRambuScreen(),
     const EdukasiPage(), // 🔹 Sudah terhubung ke file edukasi.dart
     const Center(child: Text('Deteksi Page')),
     const Center(child: Text('Jelajahi Page')),
