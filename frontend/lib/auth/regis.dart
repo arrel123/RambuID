@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-// 🔹 Clipper untuk lengkungan di bagian atas
+// 📹 Clipper untuk lengkungan di bagian atas
 class ConvexClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -22,7 +22,7 @@ class ConvexClipper extends CustomClipper<Path> {
 }
 
 class RegisPage extends StatefulWidget {
-  const RegisPage({Key? key}) : super(key: key);
+  const RegisPage({super.key});
 
   @override
   State<RegisPage> createState() => _RegisPageState();
@@ -47,6 +47,27 @@ class _RegisPageState extends State<RegisPage> {
     super.dispose();
   }
 
+  void _handleRegistration() {
+    if (_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Pendaftaran berhasil!",
+            style: TextStyle(fontFamily: 'Poppins'),
+          ),
+          backgroundColor: Color(0xFF8B9C4A),
+        ),
+      );
+      
+      // Simpan context sebelum async
+      final navigator = Navigator.of(context);
+      
+      Future.delayed(const Duration(seconds: 1), () {
+        navigator.pushReplacementNamed('/login');
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,7 +76,7 @@ class _RegisPageState extends State<RegisPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // 🔸 Bagian header kuning dengan lengkungan & logo rambu
+              // 📸 Bagian header kuning dengan lengkungan & logo rambu
               ClipPath(
                 clipper: ConvexClipper(),
                 child: Container(
@@ -93,7 +114,7 @@ class _RegisPageState extends State<RegisPage> {
                 ),
               ),
 
-              // 🔸 Form Daftar
+              // 📸 Form Daftar
               Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Form(
@@ -357,23 +378,7 @@ class _RegisPageState extends State<RegisPage> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Pendaftaran berhasil!",
-                                    style: TextStyle(fontFamily: 'Poppins'),
-                                  ),
-                                  backgroundColor: Color(0xFF8B9C4A),
-                                ),
-                              );
-                              Future.delayed(const Duration(seconds: 1), () {
-                                Navigator.pushReplacementNamed(
-                                    context, '/login');
-                              });
-                            }
-                          },
+                          onPressed: _handleRegistration,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD6D588),
                             foregroundColor: const Color(0xFF2C3E50),

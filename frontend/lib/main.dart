@@ -8,11 +8,6 @@ import 'profile/setting_acc.dart';
 import 'auth/login_page.dart';
 import 'auth/regis.dart';
 import 'features/beranda.dart';
-import 'features/detailrambu.dart';
-import 'profile/tentang_pribadi.dart';
-import 'profile/bahasa.dart';
-import 'profile/riwayat.dart';
-import 'profile/edit_profil.dart';
 
 void main() {
   runApp(const MyApp());

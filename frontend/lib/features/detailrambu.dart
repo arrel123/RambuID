@@ -4,7 +4,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 class DetailRambuScreen extends StatefulWidget {
   final Map<String, dynamic> rambu;
 
-  const DetailRambuScreen({Key? key, required this.rambu}) : super(key: key);
+  const DetailRambuScreen({super.key, required this.rambu});
 
   @override
   State<DetailRambuScreen> createState() => _DetailRambuScreenState();
@@ -22,10 +22,12 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
   void _initTts() {
     flutterTts = FlutterTts();
-    
+
     // Konfigurasi TTS - Kecepatan diubah menjadi 1.0 (normal/lebih cepat)
     flutterTts.setLanguage("id-ID"); // Bahasa Indonesia
-    flutterTts.setSpeechRate(1.0); // ⭐ DIUBAH: Kecepatan bicara menjadi 1.0 (normal)
+    flutterTts.setSpeechRate(
+      1.0,
+    ); // ⭐ DIUBAH: Kecepatan bicara menjadi 1.0 (normal)
     flutterTts.setPitch(1.0); // Nada suara (0.5 - 2.0)
     flutterTts.setVolume(1.0); // Volume (0.0 - 1.0)
 
@@ -46,7 +48,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
       setState(() {
         isSpeaking = false;
       });
-      print("TTS Error: $msg");
+      debugPrint("TTS Error: $msg");
     });
   }
 
@@ -63,7 +65,8 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
       await flutterTts.speak(textToSpeak);
     } catch (e) {
-      print("Error speaking: $e");
+      debugPrint("Error speaking: $e");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal memutar audio: $e'),
@@ -118,7 +121,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
-              
+
               // Rambu Image
               Container(
                 width: 150,
@@ -154,9 +157,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // KETERANGAN Title
               const Text(
                 'KETERANGAN',
@@ -168,9 +171,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   fontFamily: 'Poppins',
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Detail Information
               Container(
                 width: double.infinity,
@@ -191,7 +194,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   children: [
                     _buildInfoSection(
                       title: 'NAMA RAMBU',
-                      content: widget.rambu['title'].replaceAll('\n', ' ').toUpperCase(),
+                      content: widget.rambu['title']
+                          .replaceAll('\n', ' ')
+                          .toUpperCase(),
                     ),
                     const SizedBox(height: 20),
                     _buildInfoSection(
@@ -206,9 +211,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Dengarkan Button
               SizedBox(
                 width: double.infinity,
@@ -229,7 +234,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isSpeaking ? Colors.grey : const Color(0xFFD6D588),
+                    backgroundColor: isSpeaking
+                        ? Colors.grey
+                        : const Color(0xFFD6D588),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -238,7 +245,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
             ],
           ),
@@ -247,10 +254,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     );
   }
 
-  Widget _buildInfoSection({
-    required String title,
-    required String content,
-  }) {
+  Widget _buildInfoSection({required String title, required String content}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

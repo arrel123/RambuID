@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'edukasi.dart'; // pastikan path sesuai proyekmu
 
 class KatalogRambuScreen extends StatelessWidget {
-  const KatalogRambuScreen({Key? key}) : super(key: key);
+  const KatalogRambuScreen({super.key});
 
   void _navigateToEdukasi(BuildContext context, String category) {
     Navigator.push(
@@ -137,10 +137,7 @@ class KatalogRambuScreen extends StatelessWidget {
             Container(
               width: 70,
               height: 70,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               child: Icon(icon, color: iconColor, size: 38),
             ),
             const SizedBox(height: 14),
