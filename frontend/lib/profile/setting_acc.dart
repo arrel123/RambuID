@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'tentang_pribadi.dart';
+import 'riwayat.dart';
+import 'bahasa.dart';
+import '../auth/login_page.dart';
 
 class SettingAccPage extends StatelessWidget {
   const SettingAccPage({super.key});
@@ -36,18 +40,12 @@ class SettingAccPage extends StatelessWidget {
                       SizedBox(height: 4),
                       Text(
                         'rezzy123@gmail.com',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       SizedBox(height: 2),
                       Text(
                         'Batam center',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],
                   ),
@@ -63,17 +61,38 @@ class SettingAccPage extends StatelessWidget {
                 _buildMenuItem(
                   icon: Icons.card_membership_outlined,
                   title: 'Tentang Pribadi',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TentangPribadiPage(),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.language,
                   title: 'Bahasa',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BahasaPage(),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.history,
                   title: 'Riwayat',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RiwayatPage(),
+                      ),
+                    );
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.help_outline,
@@ -93,7 +112,9 @@ class SettingAccPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(24),
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                _showLogoutDialog(context);
+              },
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 side: BorderSide(color: Colors.grey[300]!),
@@ -133,9 +154,7 @@ class SettingAccPage extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[200]!),
-          ),
+          border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
         ),
         child: Row(
           children: [
@@ -144,16 +163,61 @@ class SettingAccPage extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black87,
-                ),
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
               ),
             ),
             Icon(Icons.chevron_right, color: Colors.grey[400]),
           ],
         ),
       ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Konfirmasi Logout',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Apakah Anda yakin ingin keluar dari aplikasi?',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                // Navigate to login page and clear navigation stack
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                'Keluar',
+                style: TextStyle(
+                  color: Color(0xFFD6D588),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

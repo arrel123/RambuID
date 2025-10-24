@@ -5,10 +5,14 @@ import 'package:curved_labeled_navigation_bar/curved_navigation_bar_item.dart';
 // Import halaman lain
 import 'features/edukasi.dart';
 import 'profile/setting_acc.dart';
-import 'auth/login_page.dart'; 
+import 'auth/login_page.dart';
 import 'auth/regis.dart';
 import 'features/beranda.dart';
 import 'features/detailrambu.dart';
+import 'profile/tentang_pribadi.dart';
+import 'profile/bahasa.dart';
+import 'profile/riwayat.dart';
+import 'profile/edit_profil.dart';
 
 void main() {
   runApp(const MyApp());
@@ -24,9 +28,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Poppins',
         primaryColor: const Color(0xFFD6D588),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFD6D588),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFD6D588)),
       ),
       // 🔹 Mulai dari halaman Login
       home: const LoginPage(),
