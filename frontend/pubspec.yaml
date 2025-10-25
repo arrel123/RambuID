@@ -1,4 +1,4 @@
-name: RambuID
+name: rambuid
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -11,9 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
   curved_labeled_navigation_bar: ^2.0.6
-  flutter_tts: ^3.8.3  # <- TAMBAH BARIS INI
-  cupertino_icons: ^1.0.8
+  flutter_tts: ^3.8.3 
   flutter_launcher_icons: ^0.14.2
+  camera: ^0.10.5+5
+  image_picker: ^1.0.4
+
+  cupertino_icons: ^1.0.8
+  
 
 flutter_launcher_icons:
   android: "ic_launcher"

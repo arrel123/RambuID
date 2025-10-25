@@ -8,6 +8,7 @@ import 'profile/setting_acc.dart';
 import 'auth/login_page.dart';
 import 'auth/regis.dart';
 import 'features/beranda.dart';
+import 'features/deteksi.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,13 +48,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  // ✅ Daftar halaman untuk tiap tab
+  // Daftar halaman untuk tiap tab
   final List<Widget> _pages = [
     const KatalogRambuScreen(),
-    const EdukasiPage(), // 🔹 Sudah terhubung ke file edukasi.dart
-    const Center(child: Text('Deteksi Page')),
+    const EdukasiPage(),
+    const DeteksiPage(),
     const Center(child: Text('Jelajahi Page')),
-    const SettingAccPage(), // 🔹 Halaman profil
+    const SettingAccPage(),
   ];
 
   @override
