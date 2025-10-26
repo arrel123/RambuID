@@ -9,6 +9,7 @@ import 'auth/login_page.dart';
 import 'auth/regis.dart';
 import 'features/beranda.dart';
 import 'features/deteksi.dart';
+import 'features/jelajahi_maps.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -53,7 +54,7 @@ class _HomePageState extends State<HomePage> {
     const KatalogRambuScreen(),
     const EdukasiPage(),
     const DeteksiPage(),
-    const Center(child: Text('Jelajahi Page')),
+    const JelajahiMapsPage(), 
     const SettingAccPage(),
   ];
 

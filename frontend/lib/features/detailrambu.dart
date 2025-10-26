@@ -59,9 +59,8 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     }
 
     try {
-      // ⭐ DIUBAH: Format "Nama Rambu" yaitu "Keterangan"
       String namaRambu = widget.rambu['title'].replaceAll('\n', ' ');
-      String textToSpeak = "$namaRambu yaitu ${widget.rambu['description']}";
+      String textToSpeak = "Rambu $namaRambu, yaitu ${widget.rambu['description']}";
 
       await flutterTts.speak(textToSpeak);
     } catch (e) {
