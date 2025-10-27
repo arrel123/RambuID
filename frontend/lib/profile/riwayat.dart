@@ -1,10 +1,160 @@
 import 'package:flutter/material.dart';
 
-class RiwayatPage extends StatelessWidget {
+class RiwayatItem {
+  final String icon;
+  final String title;
+  final String month;
+  final String date;
+  final String id;
+
+  RiwayatItem({
+    required this.icon,
+    required this.title,
+    required this.month,
+    required this.date,
+    required this.id,
+  });
+}
+
+class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
 
   @override
+  State<RiwayatPage> createState() => _RiwayatPageState();
+}
+
+class _RiwayatPageState extends State<RiwayatPage> {
+  List<RiwayatItem> _historyItems = [
+    RiwayatItem(
+      icon: 'assets/images/dilarang_belok_kiri.png',
+      title: 'Dilarang Belok Kiri',
+      month: 'September',
+      date: '18/09/2025',
+      id: '1',
+    ),
+    RiwayatItem(
+      icon: 'assets/images/jalan_tidak_rata.png',
+      title: 'Hati-Hati Jalan Licin',
+      month: 'September',
+      date: '18/09/2025',
+      id: '2',
+    ),
+    RiwayatItem(
+      icon: 'assets/images/dilarang_parkir.png',
+      title: 'Dilarang Parkir',
+      month: 'September',
+      date: '18/09/2025',
+      id: '3',
+    ),
+    RiwayatItem(
+      icon: 'assets/images/dilarang_putar_balik.png',
+      title: 'Dilarang Putar Balik',
+      month: 'September',
+      date: '18/09/2025',
+      id: '4',
+    ),
+    RiwayatItem(
+      icon: 'assets/images/jalan_tidak_rata.png',
+      title: 'Jalan Tidak Rata',
+      month: 'September',
+      date: '16/09/2025',
+      id: '5',
+    ),
+    RiwayatItem(
+      icon: 'assets/images/jalan_tidak_rata.png',
+      title: 'Jalan Mananjak Landai',
+      month: 'September',
+      date: '16/09/2025',
+      id: '6',
+    ),
+  ];
+
+  void _deleteItem(String id) {
+    setState(() {
+      _historyItems.removeWhere((item) => item.id == id);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Riwayat berhasil dihapus'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(String id, String title) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Riwayat'),
+        content: Text('Apakah Anda yakin ingin menghapus "$title"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteItem(id);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAllConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Semua Riwayat'),
+        content: const Text('Apakah Anda yakin ingin menghapus semua riwayat?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _historyItems.clear();
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Semua riwayat berhasil dihapus'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus Semua'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Group items by month and date
+    Map<String, List<RiwayatItem>> groupedItems = {};
+    for (var item in _historyItems) {
+      final key = '${item.month}_${item.date}';
+      if (!groupedItems.containsKey(key)) {
+        groupedItems[key] = [];
+      }
+      groupedItems[key]!.add(item);
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -17,25 +167,14 @@ class RiwayatPage extends StatelessWidget {
               child: Row(
                 children: [
                   // Back Button
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey[300]!, width: 1),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back_ios,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(8),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -50,53 +189,64 @@ class RiwayatPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Delete All Button
+                  if (_historyItems.isNotEmpty)
+                    IconButton(
+                      onPressed: _showDeleteAllConfirmation,
+                      icon: const Icon(Icons.delete_outline),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.all(8),
+                      ),
+                    ),
                 ],
               ),
             ),
 
             // Content
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // September - First Group
-                  _buildMonthHeader('September', '18/09/2025'),
-                  const SizedBox(height: 12),
-                  _buildHistoryItem(
-                    icon: 'assets/images/dilarang_belok_kiri.png',
-                    title: 'Dilarang Belok Kiri',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHistoryItem(
-                    icon: 'assets/images/jalan_tidak_rata.png',
-                    title: 'Hati-Hati Jalan Licin',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHistoryItem(
-                    icon: 'assets/images/dilarang_parkir.png',
-                    title: 'Dilarang Parkir',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHistoryItem(
-                    icon: 'assets/images/dilarang_putar_balik.png',
-                    title: 'Dilarang Putar Balik',
-                  ),
-                  const SizedBox(height: 24),
-
-                  // September - Second Group
-                  _buildMonthHeader('September', '16/09/2025'),
-                  const SizedBox(height: 12),
-                  _buildHistoryItem(
-                    icon: 'assets/images/jalan_tidak_rata.png',
-                    title: 'Jalan Tidak Rata',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildHistoryItem(
-                    icon: 'assets/images/jalan_tidak_rata.png',
-                    title: 'Jalan Mananjak Landai',
-                  ),
-                ],
-              ),
+              child: _historyItems.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.history,
+                            size: 80,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada riwayat',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        for (var entry in groupedItems.entries) ...[
+                          _buildMonthHeader(
+                            entry.value.first.month,
+                            entry.value.first.date,
+                          ),
+                          const SizedBox(height: 12),
+                          for (var item in entry.value) ...[
+                            _buildHistoryItem(
+                              icon: item.icon,
+                              title: item.title,
+                              id: item.id,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          const SizedBox(height: 24),
+                        ],
+                      ],
+                    ),
             ),
           ],
         ),
@@ -122,7 +272,11 @@ class RiwayatPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem({required String icon, required String title}) {
+  Widget _buildHistoryItem({
+    required String icon,
+    required String title,
+    required String id,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -153,6 +307,14 @@ class RiwayatPage extends StatelessWidget {
                 color: Colors.black87,
               ),
             ),
+          ),
+          // Delete Button
+          IconButton(
+            onPressed: () => _showDeleteConfirmation(id, title),
+            icon: const Icon(Icons.delete_outline),
+            color: Colors.red[400],
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(),
           ),
         ],
       ),

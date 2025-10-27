@@ -6,13 +6,15 @@ class ConvexClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     Path path = Path();
     path.lineTo(0, size.height - 40);
-    
+
     // Membuat kurva cembung (melengkung ke bawah)
     path.quadraticBezierTo(
-      size.width / 2, size.height, // Control point (titik tengah melengkung ke bawah)
-      size.width, size.height - 40, // End point
+      size.width / 2,
+      size.height, // Control point (titik tengah melengkung ke bawah)
+      size.width,
+      size.height - 40, // End point
     );
-    
+
     path.lineTo(size.width, 0);
     path.close();
     return path;
@@ -96,7 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
-                    
+
                     // Email Field
                     const Text(
                       'EMAIL',
@@ -174,8 +176,8 @@ class _LoginPageState extends State<LoginPage> {
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                             color: const Color(0xFF888888),
                           ),
                           onPressed: () {
@@ -289,7 +291,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: const Text(
                             'DAFTAR',
                             style: TextStyle(
-                              color: Color(0xFF2C3E50),
+                              color: Color(0xFFD6D588),
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
@@ -339,4 +341,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

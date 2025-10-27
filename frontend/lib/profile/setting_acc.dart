@@ -3,8 +3,25 @@ import 'tentang_pribadi.dart';
 import 'bahasa.dart';
 import 'riwayat.dart';
 
-class SettingAccPage extends StatelessWidget {
+class SettingAccPage extends StatefulWidget {
   const SettingAccPage({super.key});
+
+  @override
+  State<SettingAccPage> createState() => _SettingAccPageState();
+}
+
+class _SettingAccPageState extends State<SettingAccPage> {
+  String _namaLengkap = 'Andika Dwi';
+  String _email = 'rezzy123@gmail.com';
+  String _alamat = 'Batam center';
+
+  void _updateProfile(String nama, String email, String alamat) {
+    setState(() {
+      _namaLengkap = nama;
+      _email = email;
+      _alamat = alamat;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +32,7 @@ class SettingAccPage extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 40),
-              
+
               // Profile Picture
               Container(
                 width: 120,
@@ -26,64 +43,67 @@ class SettingAccPage extends StatelessWidget {
                     image: AssetImage('assets/images/profile.png'),
                     fit: BoxFit.cover,
                   ),
-                  border: Border.all(
-                    color: const Color(0xFFD6D588),
-                    width: 3,
-                  ),
+                  border: Border.all(color: const Color(0xFFD6D588), width: 3),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Name
-              const Text(
-                'Andika Dwi Amanda',
-                style: TextStyle(
+              Text(
+                _namaLengkap,
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               // Email
-              const Text(
-                'rezzy123@gmail.com',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+              Text(
+                _email,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
-              
+
               const SizedBox(height: 4),
-              
+
               // Location
-              const Text(
-                'Batam center',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+              Text(
+                _alamat,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Menu Items
               _buildMenuItem(
                 context,
                 icon: Icons.credit_card_outlined,
                 title: 'Tentang Pribadi',
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const TentangPribadiPage(),
+                      builder: (context) => TentangPribadiPage(
+                        initialNama: _namaLengkap,
+                        initialEmail: _email,
+                        initialAlamat: _alamat,
+                      ),
                     ),
                   );
+
+                  if (result != null && result is Map<String, dynamic>) {
+                    _updateProfile(
+                      result['nama'] as String,
+                      result['email'] as String,
+                      result['alamat'] as String,
+                    );
+                  }
                 },
               ),
-              
+
               _buildMenuItem(
                 context,
                 icon: Icons.language_outlined,
@@ -91,13 +111,11 @@ class SettingAccPage extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const BahasaPage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const BahasaPage()),
                   );
                 },
               ),
-              
+
               _buildMenuItem(
                 context,
                 icon: Icons.history_outlined,
@@ -111,13 +129,12 @@ class SettingAccPage extends StatelessWidget {
                   );
                 },
               ),
-              
+
               _buildMenuItem(
                 context,
                 icon: Icons.help_outline,
                 title: 'Bantuan',
                 onTap: () {
-                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Halaman Bantuan belum tersedia'),
@@ -126,13 +143,12 @@ class SettingAccPage extends StatelessWidget {
                   );
                 },
               ),
-              
+
               _buildMenuItem(
                 context,
                 icon: Icons.info_outline,
                 title: 'Tentang Kami',
                 onTap: () {
-                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Halaman Tentang Kami belum tersedia'),
@@ -141,9 +157,9 @@ class SettingAccPage extends StatelessWidget {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Logout Button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 35),
@@ -153,10 +169,7 @@ class SettingAccPage extends StatelessWidget {
                     onPressed: () {
                       _showLogoutDialog(context);
                     },
-                    icon: const Icon(
-                      Icons.logout,
-                      color: Color(0xFFD6D588),
-                    ),
+                    icon: const Icon(Icons.logout, color: Color(0xFFD6D588)),
                     label: const Text(
                       'Keluar',
                       style: TextStyle(
@@ -180,7 +193,7 @@ class SettingAccPage extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 40),
             ],
           ),
@@ -201,19 +214,12 @@ class SettingAccPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 18),
         decoration: const BoxDecoration(
           border: Border(
-            bottom: BorderSide(
-              color: Color(0xFFF0F0F0),
-              width: 1,
-            ),
+            bottom: BorderSide(color: Color(0xFFF0F0F0), width: 1),
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: Colors.black87,
-            ),
+            Icon(icon, size: 24, color: Colors.black87),
             const SizedBox(width: 20),
             Expanded(
               child: Text(
@@ -225,11 +231,7 @@ class SettingAccPage extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              size: 24,
-              color: Colors.black54,
-            ),
+            const Icon(Icons.chevron_right, size: 24, color: Colors.black54),
           ],
         ),
       ),
@@ -246,9 +248,7 @@ class SettingAccPage extends StatelessWidget {
           ),
           title: const Text(
             'Keluar',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: const Text('Apakah Anda yakin ingin keluar?'),
           actions: [
@@ -256,12 +256,7 @@ class SettingAccPage extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text(
-                'Batal',
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -280,9 +275,7 @@ class SettingAccPage extends StatelessWidget {
               ),
               child: const Text(
                 'Keluar',
-                style: TextStyle(
-                  color: Colors.white,
-                ),
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ],
