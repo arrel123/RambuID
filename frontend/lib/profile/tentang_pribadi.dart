@@ -1,8 +1,42 @@
 import 'package:flutter/material.dart';
 import 'edit_profil.dart';
 
-class TentangPribadiPage extends StatelessWidget {
-  const TentangPribadiPage({super.key});
+class TentangPribadiPage extends StatefulWidget {
+  final String initialNama;
+  final String initialEmail;
+  final String initialAlamat;
+
+  const TentangPribadiPage({
+    super.key,
+    this.initialNama = 'Andika Dwi',
+    this.initialEmail = 'rezzy123@gmail.com',
+    this.initialAlamat = 'Batam center',
+  });
+
+  @override
+  State<TentangPribadiPage> createState() => _TentangPribadiPageState();
+}
+
+class _TentangPribadiPageState extends State<TentangPribadiPage> {
+  late String _namaLengkap;
+  late String _email;
+  late String _alamat;
+
+  @override
+  void initState() {
+    super.initState();
+    _namaLengkap = widget.initialNama;
+    _email = widget.initialEmail;
+    _alamat = widget.initialAlamat;
+  }
+
+  void _updateProfile(String nama, String email, String alamat) {
+    setState(() {
+      _namaLengkap = nama;
+      _email = email;
+      _alamat = alamat;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,25 +52,14 @@ class TentangPribadiPage extends StatelessWidget {
               child: Row(
                 children: [
                   // Back Button
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey[300]!, width: 1),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back_ios,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(8),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -53,13 +76,33 @@ class TentangPribadiPage extends StatelessWidget {
                   ),
                   // Edit Button
                   TextButton(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const EditProfilPage(),
+                          builder: (context) => EditProfilPage(
+                            initialNama: _namaLengkap,
+                            initialEmail: _email,
+                            initialAlamat: _alamat,
+                          ),
                         ),
                       );
+
+                      if (result != null && result is Map<String, dynamic>) {
+                        _updateProfile(
+                          result['nama'] as String,
+                          result['email'] as String,
+                          result['alamat'] as String,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Profil berhasil disimpan!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
                     },
                     child: const Text(
                       'EDIT',
@@ -105,9 +148,9 @@ class TentangPribadiPage extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // Name
-                    const Text(
-                      'Andika Dwi',
-                      style: TextStyle(
+                    Text(
+                      _namaLengkap,
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
@@ -120,7 +163,7 @@ class TentangPribadiPage extends StatelessWidget {
                     _buildInfoCard(
                       icon: Icons.person_outline,
                       label: 'NAMA LENGKAP',
-                      value: 'Andika Dwi',
+                      value: _namaLengkap,
                     ),
 
                     const SizedBox(height: 16),
@@ -128,7 +171,7 @@ class TentangPribadiPage extends StatelessWidget {
                     _buildInfoCard(
                       icon: Icons.email_outlined,
                       label: 'EMAIL',
-                      value: 'rezzy123@gmail.com',
+                      value: _email,
                     ),
 
                     const SizedBox(height: 16),
@@ -136,7 +179,7 @@ class TentangPribadiPage extends StatelessWidget {
                     _buildInfoCard(
                       icon: Icons.location_on_outlined,
                       label: 'ALAMAT',
-                      value: 'Batam center',
+                      value: _alamat,
                     ),
                   ],
                 ),

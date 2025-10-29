@@ -58,10 +58,10 @@ class _RegisPageState extends State<RegisPage> {
           backgroundColor: Color(0xFF8B9C4A),
         ),
       );
-      
+
       // Simpan context sebelum async
       final navigator = Navigator.of(context);
-      
+
       Future.delayed(const Duration(seconds: 1), () {
         navigator.pushReplacementNamed('/login');
       });
@@ -148,10 +148,27 @@ class _RegisPageState extends State<RegisPage> {
                             fontSize: 14,
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F0),
+                          fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD6D588),
+                              width: 2,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -191,10 +208,27 @@ class _RegisPageState extends State<RegisPage> {
                             fontSize: 14,
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F0),
+                          fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD6D588),
+                              width: 2,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -241,7 +275,7 @@ class _RegisPageState extends State<RegisPage> {
                             fontSize: 14,
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F0),
+                          fillColor: Colors.white,
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
@@ -257,7 +291,24 @@ class _RegisPageState extends State<RegisPage> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD6D588),
+                              width: 2,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -304,7 +355,7 @@ class _RegisPageState extends State<RegisPage> {
                             fontSize: 14,
                           ),
                           filled: true,
-                          fillColor: const Color(0xFFF5F5F0),
+                          fillColor: Colors.white,
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscureConfirmPassword
@@ -321,7 +372,24 @@ class _RegisPageState extends State<RegisPage> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFDDDDDD),
+                              width: 1.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFD6D588),
+                              width: 2,
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -360,7 +428,7 @@ class _RegisPageState extends State<RegisPage> {
                             child: const Text(
                               "LOGIN",
                               style: TextStyle(
-                                color: Color(0xFF2C3E50),
+                                color: Color(0xFFD6D588),
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'Poppins',

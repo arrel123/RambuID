@@ -24,25 +24,14 @@ class _BahasaPageState extends State<BahasaPage> {
               child: Row(
                 children: [
                   // Back Button
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey[300]!, width: 1),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back_ios,
-                        size: 16,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(8),
                     ),
                   ),
                   const SizedBox(width: 16),
