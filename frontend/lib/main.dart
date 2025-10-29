@@ -10,6 +10,7 @@ import 'auth/regis.dart';
 import 'features/beranda.dart';
 import 'features/deteksi.dart';
 import 'features/jelajahi_maps.dart'; 
+import 'admin/admin_main_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomePage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisPage(),
+        '/admin_dashboard': (context) => const AdminMainScreen(),
       },
     );
   }
