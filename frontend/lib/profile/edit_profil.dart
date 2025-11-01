@@ -6,12 +6,14 @@ class EditProfilPage extends StatefulWidget {
   final String initialNama;
   final String initialEmail;
   final String initialAlamat;
+  final String initialPassword;
 
   const EditProfilPage({
     super.key,
     this.initialNama = 'Andika Dwi',
     this.initialEmail = 'rezzy123@gmail.com',
     this.initialAlamat = 'Batam center',
+    this.initialPassword = '••••••••',
   });
 
   @override
@@ -22,8 +24,14 @@ class _EditProfilPageState extends State<EditProfilPage> {
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _alamatController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
+
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void initState() {
@@ -39,6 +47,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
     _namaController.dispose();
     _emailController.dispose();
     _alamatController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -166,6 +176,32 @@ class _EditProfilPageState extends State<EditProfilPage> {
                       maxLines: 3,
                     ),
 
+                    const SizedBox(height: 20),
+
+                    _buildPasswordField(
+                      label: 'KATA SANDI BARU',
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      onToggleObscure: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _buildPasswordField(
+                      label: 'KONFIRMASI KATA SANDI BARU',
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirmPassword,
+                      onToggleObscure: () {
+                        setState(() {
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                        });
+                      },
+                    ),
+
                     const SizedBox(height: 40),
 
                     // Save Button
@@ -215,11 +251,51 @@ class _EditProfilPageState extends State<EditProfilPage> {
                             return;
                           }
 
+                          // Validate passwords
+                          if (_passwordController.text.trim().isNotEmpty ||
+                              _confirmPasswordController.text
+                                  .trim()
+                                  .isNotEmpty) {
+                            if (_passwordController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Kata sandi baru harus diisi'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (_passwordController.text.trim().length < 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Kata sandi minimal 6 karakter',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (_passwordController.text.trim() !=
+                                _confirmPasswordController.text.trim()) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Kata sandi tidak cocok'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                          }
+
                           // Return updated data
                           Navigator.pop(context, {
                             'nama': _namaController.text.trim(),
                             'email': _emailController.text.trim(),
                             'alamat': _alamatController.text.trim(),
+                            'password': _passwordController.text.trim(),
                             'profileImage': _selectedImage?.path,
                           });
                         },
@@ -295,6 +371,64 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   color: Color(0xFFD6D588),
                   width: 2,
                 ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField({
+    required String label,
+    required TextEditingController controller,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            style: const TextStyle(fontSize: 15, color: Colors.black87),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: Color(0xFFD6D588),
+                  width: 2,
+                ),
+              ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey[600],
+                ),
+                onPressed: onToggleObscure,
               ),
             ),
           ),

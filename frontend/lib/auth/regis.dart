@@ -426,7 +426,7 @@ class _RegisPageState extends State<RegisPage> {
                               Navigator.pushNamed(context, '/login');
                             },
                             child: const Text(
-                              "LOGIN",
+                              "MASUK",
                               style: TextStyle(
                                 color: Color(0xFFD6D588),
                                 fontSize: 14,

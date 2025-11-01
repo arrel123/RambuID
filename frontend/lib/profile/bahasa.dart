@@ -84,9 +84,9 @@ class _BahasaPageState extends State<BahasaPage> {
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedLanguage = code;
-        });
+        if (!isSelected) {
+          _showLanguageConfirmationDialog(code);
+        }
       },
       child: Container(
         width: double.infinity,
@@ -98,7 +98,7 @@ class _BahasaPageState extends State<BahasaPage> {
             SizedBox(
               width: 24,
               child: isSelected
-                  ? const Icon(Icons.check, color: Colors.green, size: 20)
+                  ? const Icon(Icons.check, color: Color(0xFFD6D588), size: 20)
                   : const SizedBox(),
             ),
             const SizedBox(width: 16),
@@ -138,6 +138,67 @@ class _BahasaPageState extends State<BahasaPage> {
       height: 1,
       color: Colors.grey[300],
       margin: const EdgeInsets.symmetric(horizontal: 20),
+    );
+  }
+
+  void _showLanguageConfirmationDialog(String newLanguage) {
+    final String languageName = newLanguage == 'en'
+        ? 'English'
+        : 'Bahasa Indonesia';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text(
+            'Ganti Bahasa',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Apakah Anda yakin ingin mengubah bahasa ke $languageName?',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  selectedLanguage = newLanguage;
+                });
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Bahasa berhasil diubah ke $languageName'),
+                    backgroundColor: const Color(0xFF8B9C4A),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+              child: const Text(
+                'Ya',
+                style: TextStyle(
+                  color: Color(0xFFD6D588),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

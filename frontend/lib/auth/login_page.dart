@@ -216,50 +216,32 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 16),
 
-                    // Remember Me & Forgot Password
+                    // Remember Me
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _rememberMe = value ?? false;
-                                  });
-                                },
-                                activeColor: const Color(0xFFD6D588),
-                                side: const BorderSide(
-                                  color: Color(0xFF888888),
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Ingat saya',
-                              style: TextStyle(
-                                color: Color(0xFF666666),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            // Navigate to forgot password
-                          },
-                          child: const Text(
-                            'Lupa Kata Sandi?',
-                            style: TextStyle(
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            onChanged: (value) {
+                              setState(() {
+                                _rememberMe = value ?? false;
+                              });
+                            },
+                            activeColor: const Color(0xFFD6D588),
+                            side: const BorderSide(
                               color: Color(0xFF888888),
-                              fontSize: 14,
-                              decoration: TextDecoration.underline,
+                              width: 1.5,
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Ingat saya',
+                          style: TextStyle(
+                            color: Color(0xFF666666),
+                            fontSize: 14,
                           ),
                         ),
                       ],

@@ -163,30 +163,46 @@ class _SettingAccPageState extends State<SettingAccPage> {
               // Logout Button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 35),
-                child: SizedBox(
+                child: Container(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _showLogoutDialog(context);
-                    },
-                    icon: const Icon(Icons.logout, color: Color(0xFFD6D588)),
-                    label: const Text(
-                      'Keluar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFD6D588),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF5F5F5),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(
-                          color: Color(0xFFE0E0E0),
-                          width: 1,
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        _showLogoutDialog(context);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.logout,
+                              color: Color(0xFFD6D588),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Keluar',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFD6D588),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

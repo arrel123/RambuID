@@ -5,12 +5,14 @@ class TentangPribadiPage extends StatefulWidget {
   final String initialNama;
   final String initialEmail;
   final String initialAlamat;
+  final String initialPassword;
 
   const TentangPribadiPage({
     super.key,
     this.initialNama = 'Andika Dwi',
     this.initialEmail = 'rezzy123@gmail.com',
     this.initialAlamat = 'Batam center',
+    this.initialPassword = '••••••••',
   });
 
   @override
@@ -21,6 +23,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
   late String _namaLengkap;
   late String _email;
   late String _alamat;
+  late String _password;
 
   @override
   void initState() {
@@ -28,13 +31,22 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
     _namaLengkap = widget.initialNama;
     _email = widget.initialEmail;
     _alamat = widget.initialAlamat;
+    _password = widget.initialPassword;
   }
 
-  void _updateProfile(String nama, String email, String alamat) {
+  void _updateProfile(
+    String nama,
+    String email,
+    String alamat,
+    String? password,
+  ) {
     setState(() {
       _namaLengkap = nama;
       _email = email;
       _alamat = alamat;
+      if (password != null && password.isNotEmpty) {
+        _password = '••••••••'; // Always display masked password
+      }
     });
   }
 
@@ -93,6 +105,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                           result['nama'] as String,
                           result['email'] as String,
                           result['alamat'] as String,
+                          result['password'] as String?,
                         );
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -180,6 +193,14 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                       icon: Icons.location_on_outlined,
                       label: 'ALAMAT',
                       value: _alamat,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    _buildInfoCard(
+                      icon: Icons.lock_outlined,
+                      label: 'KATA SANDI',
+                      value: _password,
                     ),
                   ],
                 ),

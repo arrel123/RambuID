@@ -212,7 +212,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                         children: [
                           Icon(
                             Icons.history,
-                            size: 80,
+                            size: 100,
                             color: Colors.grey[400],
                           ),
                           const SizedBox(height: 16),
