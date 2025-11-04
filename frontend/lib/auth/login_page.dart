@@ -291,7 +291,26 @@ class _LoginPageState extends State<LoginPage> {
                       height: 56,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/home');
+                          // Dummy admin validation
+                          final email = _emailController.text;
+                          final password = _passwordController.text;
+
+                          // Check for admin credentials
+                          if (email == 'admin@gmail.com' && password == 'admin123') {
+                            // Navigate to admin dashboard
+                            Navigator.pushReplacementNamed(context, '/admin/dashboard_view');
+                          } else if (email.isNotEmpty && password.isNotEmpty) {
+                            // Navigate regular users to home
+                            Navigator.pushReplacementNamed(context, '/dashboard_view');
+                          } else {
+                            // Show error for empty fields
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Email dan password harus diisi!'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D588),

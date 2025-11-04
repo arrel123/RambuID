@@ -25,25 +25,25 @@ class RambuView extends StatefulWidget {
 class _RambuViewState extends State<RambuView> {
   final List<Rambu> _rambuList = [
     Rambu(
-      imagePath: 'assets/images/tikungan.png',
+      imagePath: '/images/tikungan.png',
       nama: 'Tikungan Tajam',
       jenis: 'Peringatan',
       deskripsi: 'Rambu ini berfungsi untuk memberikan peringatan kepada pengemudi bahwa di depan mereka akan menemui tikungan yang sangat tajam ke arah kanan.',
     ),
     Rambu(
-      imagePath: 'assets/images/dilarang_parkir.png',
+      imagePath: '/images/dilarang_parkir.png',
       nama: 'Dilarang Parkir',
       jenis: 'Larangan',
       deskripsi: 'Rambu ini melarang pengendara untuk memarkir kendaraannya di area tertentu. Pengendara masih diperbolehkan untuk berhenti sementara di area ini, tetapi tidak boleh meninggalkan kendaraannya',
     ),
     Rambu(
-      imagePath: 'assets/images/wajib_kiri.png',
+      imagePath: '/images/wajib_kiri.png',
       nama: 'Wajib Belok Kiri',
       jenis: 'Perintah',
       deskripsi: 'Rambu ini mengharuskan pengendara untuk belok kiri pada persimpangan atau titik tertentu. Pengendara tidak diperbolehkan untuk melanjutkan lurus atau belok ke arah lain selain kiri.',
     ),
     Rambu(
-      imagePath: 'assets/images/petunjuk.jpg',
+      imagePath: '/images/petunjuk.jpg',
       nama: 'Petunjuk Arah',
       jenis: 'Petunjuk',
       deskripsi: 'Rambu ini memberikan informasi arah kepada pengendara mengenai lokasi atau tujuan tertentu, seperti nama jalan, jarak ke tempat tujuan, atau arah menuju fasilitas umum.',
