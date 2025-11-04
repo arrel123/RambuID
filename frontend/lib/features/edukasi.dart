@@ -30,10 +30,10 @@ class _EdukasiPageState extends State<EdukasiPage> {
 
   final List<Map<String, dynamic>> rambuData = [
     {
-      'image': 'assets/images/penyeberangan_pejalan_kaki.png',
-      'title': 'Penyeberangan\npejalan\nkaki',
+      'image': 'assets/images/jalan_tidak_rata.png',
+      'title': 'Jalan tidak\nrata',
       'category': 'Peringatan',
-      'description': 'Memberi peringatan bahwa di depan ada penyeberangan pejalan kaki.',
+      'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
     },
     {
       'image': 'assets/images/jalan_tidak_rata.png',
@@ -42,22 +42,22 @@ class _EdukasiPageState extends State<EdukasiPage> {
       'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
     },
     {
-      'image': 'assets/images/penyeberangan_pejalan_kaki.png',
-      'title': 'Penyeberangan\npejalan\nkaki',
+      'image': 'assets/images/jalan_tidak_rata.png',
+      'title': 'Jalan tidak\nrata',
       'category': 'Peringatan',
-      'description': 'Memberi peringatan bahwa di depan ada penyeberangan pejalan kaki.',
+      'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
     },
     {
-      'image': 'assets/images/dilarang_belok_kiri.png',
-      'title': 'Dilarang belok\nkiri',
+      'image': 'assets/images/dilarang_putar_balik.png',
+      'title': 'Dilarang putar\nbalik',
       'category': 'Larangan',
-      'description': 'Melarang kendaraan untuk belok kiri di area tersebut.',
+      'description': 'Melarang kendaraan untuk putar balik di area tersebut.',
     },
     {
-      'image': 'assets/images/dilarang_parkir.png',
-      'title': 'Dilarang Parkir',
+      'image': 'assets/images/dilarang_putar_balik.png',
+      'title': 'Dilarang putar\nbalik',
       'category': 'Larangan',
-      'description': 'Melarang Kendaraan Parkir Di Area Tertentu Untuk Menjaga Kelancaran Lalu Lintas.',
+      'description': 'Melarang kendaraan untuk putar balik di area tersebut.',
     },
     {
       'image': 'assets/images/dilarang_putar_balik.png',
