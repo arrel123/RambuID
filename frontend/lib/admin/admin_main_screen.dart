@@ -72,6 +72,44 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 icon: const Icon(Icons.menu),
                 onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
+              // Tambahkan menu aksi (profil / logout) di AppBar untuk mobile
+              actions: [
+                PopupMenuButton<int>(
+                  onSelected: (value) async {
+                    if (value == 1) {
+                      // Konfirmasi logout
+                      final should = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Logout'),
+                          content: const Text('Anda yakin ingin keluar?'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text('Batal')),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFDD835),
+                                  foregroundColor: Colors.black),
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Logout'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (should == true) {
+                        Navigator.pushNamedAndRemoveUntil(
+                            context, '/login', (route) => false);
+                      }
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 0, child: Text('Profil')),
+                    const PopupMenuItem(value: 1, child: Text('Logout')),
+                  ],
+                ),
+              ],
             )
           : null,
       drawer: isMobile
@@ -150,13 +188,47 @@ class _MainHeader extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Color(0xFFE0E0E0),
-            child: Icon(
-              Icons.person_outline_rounded,
-              size: 24,
-              color: Colors.black,
+          // Popup menu pada avatar (Profil / Logout) untuk desktop header
+          PopupMenuButton<int>(
+            onSelected: (value) async {
+              if (value == 1) {
+                final should = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Logout'),
+                    content: const Text('Anda yakin ingin keluar?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Batal')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFDD835),
+                            foregroundColor: Colors.black),
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Logout'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (should == true) {
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                }
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 0, child: Text('Profil')),
+              PopupMenuItem(value: 1, child: Text('Logout')),
+            ],
+            child: const CircleAvatar(
+              radius: 20,
+              backgroundColor: Color(0xFFE0E0E0),
+              child: Icon(
+                Icons.person_outline_rounded,
+                size: 24,
+                color: Colors.black,
+              ),
             ),
           ),
         ],

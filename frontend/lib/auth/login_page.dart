@@ -291,25 +291,33 @@ class _LoginPageState extends State<LoginPage> {
                       height: 56,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Dummy admin validation
-                          final email = _emailController.text;
+                          // Dummy admin validation (tetap izinkan login user biasa)
+                          final email = _emailController.text.trim();
                           final password = _passwordController.text;
 
-                          // Check for admin credentials
-                          if (email == 'admin@gmail.com' && password == 'admin123') {
-                            // Navigate to admin dashboard
-                            Navigator.pushReplacementNamed(context, '/admin/dashboard_view');
-                          } else if (email.isNotEmpty && password.isNotEmpty) {
-                            // Navigate regular users to home
-                            Navigator.pushReplacementNamed(context, '/dashboard_view');
-                          } else {
-                            // Show error for empty fields
+                          // Cek field kosong terlebih dahulu
+                          if (email.isEmpty || password.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Email dan password harus diisi!'),
                                 backgroundColor: Colors.red,
                               ),
                             );
+                            return;
+                          }
+
+                          // Dummy admin accounts yang diterima (contoh)
+                          final adminEmails = ['admin@rambuid.com', 'admin@gmail.com'];
+                          final adminPassword = 'admin123';
+
+                          final isAdmin = adminEmails.contains(email) && password == adminPassword;
+
+                          if (isAdmin) {
+                            // Akses khusus admin -> main admin screen
+                            Navigator.pushReplacementNamed(context, '/admin/dashboard_view');
+                          } else {
+                            // User biasa tetap bisa login dan diarahkan ke Home
+                            Navigator.pushReplacementNamed(context, '/home');
                           }
                         },
                         style: ElevatedButton.styleFrom(
