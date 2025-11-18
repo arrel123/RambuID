@@ -101,15 +101,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFD6D588),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.black,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        automaticallyImplyLeading: false,
         title: const Text(
           'Daftar Rambu',
           style: TextStyle(
@@ -118,6 +110,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        centerTitle: true,
       ),
       body: Column(
         children: [
@@ -205,8 +198,15 @@ class _EdukasiPageState extends State<EdukasiPage> {
                   onTap: () => _navigateToDetail(context, item),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8E8E8),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,

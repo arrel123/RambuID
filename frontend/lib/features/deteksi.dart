@@ -64,8 +64,9 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
       _cameraController = CameraController(
         _cameras![_selectedCameraIndex],
-        ResolutionPreset.high,
+        ResolutionPreset.medium, // Gunakan medium untuk aspect ratio yang lebih baik
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
       await _cameraController!.initialize();
@@ -299,22 +300,14 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     );
   }
 
-  // Navigasi kembali ke Beranda (HomePage dengan index 0)
-  void _navigateToBeranda() {
-    // Kembali ke halaman sebelumnya (HomePage)
-    Navigator.pop(context);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: _buildHeader(),
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            _buildHeader(),
-            
             const SizedBox(height: 20),
 
             // Camera Preview Area
@@ -334,40 +327,27 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      color: const Color(0xFFD6D588),
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Tombol Back ke Beranda
-          IconButton(
-            onPressed: _navigateToBeranda,
-            icon: const Icon(Icons.arrow_back),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white,
-              padding: const EdgeInsets.all(8),
-            ),
-          ),
-          const Text(
-            'Deteksi',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          // Tombol History ke halaman Riwayat
-          IconButton(
-            onPressed: _navigateToRiwayat,
-            icon: const Icon(Icons.history, size: 32),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              padding: const EdgeInsets.all(8),
-            ),
-          ),
-        ],
+  PreferredSizeWidget _buildHeader() {
+    return AppBar(
+      backgroundColor: const Color(0xFFD6D588),
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      title: const Text(
+        'Deteksi',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
       ),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          onPressed: _navigateToRiwayat,
+          icon: const Icon(Icons.history, size: 28, color: Colors.black),
+          padding: const EdgeInsets.all(8),
+        ),
+      ],
     );
   }
 
@@ -401,22 +381,51 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CameraPreview(_cameraController!),
-        CustomPaint(
-          painter: DetectionFramePainter(),
-        ),
-        // Flip camera button - positioned at top right
-        Positioned(
-          top: 16,
-          right: 16,
-          child: _buildFlipCameraButton(),
-        ),
-        if (_isProcessing) _buildProcessingOverlay(),
-        if (!_isProcessing) _buildInstructions(),
-      ],
+    // FIX: Crop kamera untuk memenuhi container tanpa distorsi
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cameraAspectRatio = _cameraController!.value.aspectRatio;
+        final containerAspectRatio = constraints.maxWidth / constraints.maxHeight;
+        
+        double scaleX = 1.0;
+        double scaleY = 1.0;
+        
+        // Hitung scale untuk memenuhi container sambil menjaga proporsi
+        if (cameraAspectRatio > containerAspectRatio) {
+          // Kamera lebih lebar, scale berdasarkan height
+          scaleY = cameraAspectRatio / containerAspectRatio;
+        } else {
+          // Kamera lebih tinggi, scale berdasarkan width
+          scaleX = containerAspectRatio / cameraAspectRatio;
+        }
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Transform.scale(
+              scaleX: scaleX,
+              scaleY: scaleY,
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: cameraAspectRatio,
+                  child: CameraPreview(_cameraController!),
+                ),
+              ),
+            ),
+            CustomPaint(
+              painter: DetectionFramePainter(),
+            ),
+            // Flip camera button - positioned at top right
+            Positioned(
+              top: 16,
+              right: 16,
+              child: _buildFlipCameraButton(),
+            ),
+            if (_isProcessing) _buildProcessingOverlay(),
+            if (!_isProcessing) _buildInstructions(),
+          ],
+        );
+      },
     );
   }
 
