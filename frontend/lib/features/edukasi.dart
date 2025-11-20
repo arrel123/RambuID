@@ -36,16 +36,16 @@ class _EdukasiPageState extends State<EdukasiPage> {
       'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
     },
     {
-      'image': 'assets/images/jalan_tidak_rata.png',
-      'title': 'Jalan tidak\nrata',
+      'image': '/images/tikungan_kiri.png',
+      'title': 'Tikungan kiri',
       'category': 'Peringatan',
-      'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
+      'description': 'Peringatan tikungan ke kiri',
     },
     {
-      'image': 'assets/images/jalan_tidak_rata.png',
-      'title': 'Jalan tidak\nrata',
+      'image': '/images/stop.png',
+      'title': 'Berhenti',
       'category': 'Peringatan',
-      'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
+      'description': 'Memberi peringatan kepada pengemudi untuk berhenti di persimpangan.',
     },
     {
       'image': 'assets/images/dilarang_putar_balik.png',
