@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'tentang_pribadi.dart';
 import 'bahasa.dart';
 import 'riwayat.dart';
+import 'bantuan.dart';
+import 'tentang_kami.dart';
 
 class SettingAccPage extends StatefulWidget {
   const SettingAccPage({super.key});
@@ -135,10 +137,10 @@ class _SettingAccPageState extends State<SettingAccPage> {
                 icon: Icons.help_outline,
                 title: 'Bantuan',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Halaman Bantuan belum tersedia'),
-                      duration: Duration(seconds: 2),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BantuanPage(),
                     ),
                   );
                 },
@@ -149,10 +151,10 @@ class _SettingAccPageState extends State<SettingAccPage> {
                 icon: Icons.info_outline,
                 title: 'Tentang Kami',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Halaman Tentang Kami belum tersedia'),
-                      duration: Duration(seconds: 2),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TentangKamiPage(),
                     ),
                   );
                 },

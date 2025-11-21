@@ -1,4 +1,4 @@
-name: rambuid
+name: Rambuid
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -20,6 +20,7 @@ dependencies:
   latlong2: ^0.9.1
   geolocator: ^11.0.1
   http: ^1.1.0
+  url_launcher: ^6.2.5
   
 
 flutter_launcher_icons:
@@ -39,13 +40,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/logo_rambuid.png
-    - assets/images/profile.png
-    - assets/images/penyeberangan_pejalan_kaki.png
-    - assets/images/jalan_tidak_rata.png
-    - assets/images/dilarang_belok_kiri.png
-    - assets/images/dilarang_parkir.png
-    - assets/images/dilarang_putar_balik.png
+    - assets/images/
 
   fonts:
     - family: Poppins

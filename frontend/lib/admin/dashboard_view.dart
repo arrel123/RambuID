@@ -1,10 +1,64 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
-class DashboardView extends StatelessWidget {
+class DashboardView extends StatefulWidget {
   // 🔹 REQ 3: Fungsi callback untuk pindah halaman
   final VoidCallback onViewAllRambu;
-  
+
   const DashboardView({super.key, required this.onViewAllRambu});
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  int _totalUsers = 0;
+  int _totalRambu = 0;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatistics();
+  }
+
+  Future<void> _loadStatistics() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await ApiService.getStatistics();
+
+      print('🔵 Dashboard: Statistics result = $result');
+
+      if (result['success'] == true) {
+        final Map<String, dynamic> stats = result['data'];
+        setState(() {
+          _totalUsers = stats['total_users'] ?? 0;
+          _totalRambu = stats['total_rambu'] ?? 0;
+          _isLoading = false;
+        });
+        print(
+          '🔵 Dashboard: Total Users = $_totalUsers, Total Rambu = $_totalRambu',
+        );
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Gagal memuat statistik';
+          _isLoading = false;
+        });
+        print('🔴 Dashboard: Error = $_errorMessage');
+      }
+    } catch (e) {
+      print('🔴 Dashboard: Exception = $e');
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,27 +72,44 @@ class DashboardView extends StatelessWidget {
           // Kartu Summary (Total Pengguna & Rambu)
           isMobile
               ? Column(
-                  children: const [
-                    _SummaryCard(title: 'Total Pengguna', value: '100'),
-                    SizedBox(height: 16),
-                    _SummaryCard(title: 'Total Rambu Terpasang', value: '34'),
+                  children: [
+                    _SummaryCard(
+                      title: 'Total Pengguna',
+                      value: _isLoading ? '...' : _totalUsers.toString(),
+                      isLoading: _isLoading,
+                    ),
+                    const SizedBox(height: 16),
+                    _SummaryCard(
+                      title: 'Total Rambu Terpasang',
+                      value: _isLoading ? '...' : _totalRambu.toString(),
+                      isLoading: _isLoading,
+                    ),
                   ],
                 )
               : Row(
-                  children: const [
+                  children: [
                     Expanded(
-                        child: _SummaryCard(title: 'Total Pengguna', value: '100')),
-                    SizedBox(width: 24),
+                      child: _SummaryCard(
+                        title: 'Total Pengguna',
+                        value: _isLoading ? '...' : _totalUsers.toString(),
+                        isLoading: _isLoading,
+                      ),
+                    ),
+                    const SizedBox(width: 24),
                     Expanded(
-                        child: _SummaryCard(
-                            title: 'Total Rambu Terpasang', value: '34')),
+                      child: _SummaryCard(
+                        title: 'Total Rambu Terpasang',
+                        value: _isLoading ? '...' : _totalRambu.toString(),
+                        isLoading: _isLoading,
+                      ),
+                    ),
                   ],
                 ),
-          
+
           const SizedBox(height: 32),
-          
+
           // 🔹 REQ 2 & 3: Preview Daftar Rambu
-          _RambuPreviewCard(onViewAll: onViewAllRambu),
+          _RambuPreviewCard(onViewAll: widget.onViewAllRambu),
         ],
       ),
     );
@@ -49,7 +120,12 @@ class DashboardView extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   final String title;
   final String value;
-  const _SummaryCard({required this.title, required this.value});
+  final bool isLoading;
+  const _SummaryCard({
+    required this.title,
+    required this.value,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,10 +142,19 @@ class _SummaryCard extends StatelessWidget {
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-            ),
+            isLoading
+                ? const SizedBox(
+                    height: 36,
+                    width: 36,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  )
+                : Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ],
         ),
       ),
@@ -97,7 +182,7 @@ class _RambuPreviewCard extends StatelessWidget {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             // Ini hanya preview, Anda bisa ganti dengan 3 data rambu teratas
             ListTile(
               leading: Image.asset('/images/dilarang_parkir.png', width: 40),
@@ -120,7 +205,7 @@ class _RambuPreviewCard extends StatelessWidget {
               subtitle: const Text('Petunjuk'),
             ),
             const SizedBox(height: 16),
-            
+
             // 🔹 REQ 3: Tombol untuk pindah halaman
             Align(
               alignment: Alignment.centerRight,

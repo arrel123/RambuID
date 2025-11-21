@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 // 📹 Clipper untuk lengkungan di bagian atas
 class ConvexClipper extends CustomClipper<Path> {
@@ -37,6 +38,7 @@ class _RegisPageState extends State<RegisPage> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -47,24 +49,58 @@ class _RegisPageState extends State<RegisPage> {
     super.dispose();
   }
 
-  void _handleRegistration() {
+  void _handleRegistration() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Pendaftaran berhasil!",
-            style: TextStyle(fontFamily: 'Poppins'),
-          ),
-          backgroundColor: Color(0xFF8B9C4A),
-        ),
-      );
-
-      // Simpan context sebelum async
-      final navigator = Navigator.of(context);
-
-      Future.delayed(const Duration(seconds: 1), () {
-        navigator.pushReplacementNamed('/login');
+      // Set loading state
+      setState(() {
+        _isLoading = true;
       });
+
+      // Ambil email sebagai username (backend menggunakan username)
+      final username = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      // Panggil API register
+      final result = await ApiService.register(username, password);
+
+      // Reset loading state
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (result['success']) {
+        // Registrasi berhasil
+        final data = result['data'];
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              data['message'] ?? "Pendaftaran berhasil!",
+              style: const TextStyle(fontFamily: 'Poppins'),
+            ),
+            backgroundColor: const Color(0xFF8B9C4A),
+          ),
+        );
+
+        // Simpan context sebelum async
+        final navigator = Navigator.of(context);
+
+        // Delay untuk menampilkan snackbar, lalu navigate ke login
+        Future.delayed(const Duration(seconds: 1), () {
+          navigator.pushReplacementNamed('/login');
+        });
+      } else {
+        // Registrasi gagal
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ?? "Pendaftaran gagal!",
+              style: const TextStyle(fontFamily: 'Poppins'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -446,7 +482,7 @@ class _RegisPageState extends State<RegisPage> {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: _handleRegistration,
+                          onPressed: _isLoading ? null : _handleRegistration,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFD6D588),
                             foregroundColor: const Color(0xFF2C3E50),
@@ -454,16 +490,28 @@ class _RegisPageState extends State<RegisPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
+                            disabledBackgroundColor: const Color(0xFFCCCCCC),
                           ),
-                          child: const Text(
-                            "DAFTAR",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF2C3E50),
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  "DAFTAR",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
                         ),
                       ),
                     ],

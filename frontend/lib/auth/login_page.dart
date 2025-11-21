@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 // Custom Clipper untuk membuat lengkungan cembung
 class ConvexClipper extends CustomClipper<Path> {
@@ -36,6 +37,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -290,36 +292,96 @@ class _LoginPageState extends State<LoginPage> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Dummy admin validation (tetap izinkan login user biasa)
-                          final email = _emailController.text.trim();
-                          final password = _passwordController.text;
+                        onPressed: _isLoading
+                            ? null
+                            : () async {
+                                final email = _emailController.text.trim();
+                                final password = _passwordController.text;
 
-                          // Cek field kosong terlebih dahulu
-                          if (email.isEmpty || password.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Email dan password harus diisi!'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
+                                // Cek field kosong terlebih dahulu
+                                if (email.isEmpty || password.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Email dan password harus diisi!',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
 
-                          // Dummy admin accounts yang diterima (contoh)
-                          final adminEmails = ['admin@rambuid.com', 'admin@gmail.com'];
-                          final adminPassword = 'admin123';
+                                // Set loading state
+                                setState(() {
+                                  _isLoading = true;
+                                });
 
-                          final isAdmin = adminEmails.contains(email) && password == adminPassword;
+                                // Panggil API login
+                                final result = await ApiService.login(
+                                  email,
+                                  password,
+                                );
 
-                          if (isAdmin) {
-                            // Akses khusus admin -> main admin screen
-                            Navigator.pushReplacementNamed(context, '/admin/dashboard_view');
-                          } else {
-                            // User biasa tetap bisa login dan diarahkan ke Home
-                            Navigator.pushReplacementNamed(context, '/home');
-                          }
-                        },
+                                // Reset loading state
+                                setState(() {
+                                  _isLoading = false;
+                                });
+
+                                if (result['success']) {
+                                  // Login berhasil
+                                  final data = result['data'];
+
+                                  // Cek apakah admin (dummy check - bisa diganti dengan field dari backend)
+                                  final adminEmails = [
+                                    'admin@rambuid.com',
+                                    'admin@gmail.com',
+                                    'admin@rambuid.com'.toLowerCase(),
+                                    'admin@gmail.com'.toLowerCase(),
+                                  ];
+                                  final isAdmin = adminEmails.contains(
+                                    email.toLowerCase(),
+                                  );
+
+                                  // Debug log
+                                  print('🔵 Login: Email = $email');
+                                  print('🔵 Login: isAdmin = $isAdmin');
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        data['message'] ?? 'Login berhasil!',
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                        ),
+                                      ),
+                                      backgroundColor: const Color(0xFF8B9C4A),
+                                    ),
+                                  );
+
+                                  // Navigate berdasarkan role
+                                  if (isAdmin) {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      '/admin/dashboard_view',
+                                    );
+                                  } else {
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      '/home',
+                                    );
+                                  }
+                                } else {
+                                  // Login gagal
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        result['message'] ?? 'Login gagal',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D588),
                           foregroundColor: const Color(0xFF2C3E50),
@@ -327,15 +389,27 @@ class _LoginPageState extends State<LoginPage> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          disabledBackgroundColor: const Color(0xFFCCCCCC),
                         ),
-                        child: const Text(
-                          'MASUK',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF2C3E50),
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'MASUK',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
                       ),
                     ),
 
