@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import '../services/api_service.dart'; // Import API Service untuk URL
 
 class DetailRambuScreen extends StatefulWidget {
   final Map<String, dynamic> rambu;
@@ -22,16 +23,11 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
   void _initTts() {
     flutterTts = FlutterTts();
+    flutterTts.setLanguage("id-ID");
+    flutterTts.setSpeechRate(1.0);
+    flutterTts.setPitch(1.0);
+    flutterTts.setVolume(1.0);
 
-    // Konfigurasi TTS - Kecepatan diubah menjadi 1.0 (normal/lebih cepat)
-    flutterTts.setLanguage("id-ID"); // Bahasa Indonesia
-    flutterTts.setSpeechRate(
-      1.0,
-    ); // ⭐ DIUBAH: Kecepatan bicara menjadi 1.0 (normal)
-    flutterTts.setPitch(1.0); // Nada suara (0.5 - 2.0)
-    flutterTts.setVolume(1.0); // Volume (0.0 - 1.0)
-
-    // Handler untuk event TTS
     flutterTts.setStartHandler(() {
       setState(() {
         isSpeaking = true;
@@ -59,8 +55,10 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     }
 
     try {
-      String namaRambu = widget.rambu['title'].replaceAll('\n', ' ');
-      String textToSpeak = "Rambu $namaRambu, yaitu ${widget.rambu['description']}";
+      // Ubah akses key sesuai database: 'nama' dan 'deskripsi'
+      String namaRambu = (widget.rambu['nama'] ?? '').replaceAll('\n', ' ');
+      String deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
+      String textToSpeak = "Rambu $namaRambu, yaitu $deskripsi";
 
       await flutterTts.speak(textToSpeak);
     } catch (e) {
@@ -88,8 +86,24 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     super.dispose();
   }
 
+  // Helper untuk mendapatkan URL gambar
+  String _getImageUrl() {
+    String? partialUrl = widget.rambu['gambar_url'];
+    if (partialUrl == null || partialUrl.isEmpty) return '';
+    if (partialUrl.startsWith('/')) {
+      return '${ApiService.baseUrl}$partialUrl';
+    }
+    return partialUrl;
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Ambil data menggunakan key dari database
+    final nama = widget.rambu['nama'] ?? 'Tanpa Nama';
+    final kategori = widget.rambu['kategori'] ?? '-';
+    final deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
+    final imageUrl = _getImageUrl();
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -98,7 +112,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () {
-            _stopSpeaking(); // Stop TTS ketika kembali
+            _stopSpeaking();
             Navigator.pop(context);
           },
         ),
@@ -121,7 +135,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
             children: [
               const SizedBox(height: 10),
 
-              // Rambu Image
+              // Rambu Image (Sekarang pakai Network)
               Container(
                 width: 150,
                 height: 150,
@@ -130,7 +144,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withOpacity(0.1),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -148,10 +162,14 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                       ),
                     ),
                     child: ClipOval(
-                      child: Image.asset(
-                        widget.rambu['image'],
-                        fit: BoxFit.cover,
-                      ),
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => 
+                                  const Icon(Icons.broken_image, size: 50),
+                            )
+                          : const Icon(Icons.image_not_supported, size: 50),
                     ),
                   ),
                 ),
@@ -159,7 +177,6 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
               const SizedBox(height: 20),
 
-              // KETERANGAN Title
               const Text(
                 'KETERANGAN',
                 style: TextStyle(
@@ -182,7 +199,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
+                      color: Colors.black.withOpacity(0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -193,19 +210,20 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   children: [
                     _buildInfoSection(
                       title: 'NAMA RAMBU',
-                      content: widget.rambu['title']
-                          .replaceAll('\n', ' ')
-                          .toUpperCase(),
+                      content: nama.replaceAll('\n', ' ').toUpperCase(),
                     ),
                     const SizedBox(height: 20),
                     _buildInfoSection(
                       title: 'JENIS RAMBU',
-                      content: widget.rambu['category'],
+                      // Capitalize huruf pertama kategori
+                      content: kategori.isNotEmpty 
+                          ? '${kategori[0].toUpperCase()}${kategori.substring(1)}'
+                          : '-',
                     ),
                     const SizedBox(height: 20),
                     _buildInfoSection(
                       title: 'KETERANGAN',
-                      content: widget.rambu['description'],
+                      content: deskripsi,
                     ),
                   ],
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart'; // Pastikan path import ini benar
 import 'detailrambu.dart';
 
 class EdukasiPage extends StatefulWidget {
@@ -13,6 +14,11 @@ class EdukasiPage extends StatefulWidget {
 class _EdukasiPageState extends State<EdukasiPage> {
   String selectedTab = 'Semua';
   String searchQuery = '';
+  
+  // Variabel untuk menampung data dari Backend
+  List<dynamic> _rambuList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   final List<String> tabs = [
     'Semua',
@@ -25,61 +31,65 @@ class _EdukasiPageState extends State<EdukasiPage> {
   @override
   void initState() {
     super.initState();
-    selectedTab = widget.initialCategory ?? 'Semua'; 
+    selectedTab = widget.initialCategory ?? 'Semua';
+    _fetchRambuData(); // Panggil fungsi ambil data saat halaman dibuka
   }
 
-  final List<Map<String, dynamic>> rambuData = [
-    {
-      'image': 'assets/images/jalan_tidak_rata.png',
-      'title': 'Jalan tidak\nrata',
-      'category': 'Peringatan',
-      'description': 'Memberi peringatan bahwa di depan ada jalan yang tidak rata.',
-    },
-    {
-      'image': '/images/tikungan_kiri.png',
-      'title': 'Tikungan kiri',
-      'category': 'Peringatan',
-      'description': 'Peringatan tikungan ke kiri',
-    },
-    {
-      'image': '/images/stop.png',
-      'title': 'Berhenti',
-      'category': 'Peringatan',
-      'description': 'Memberi peringatan kepada pengemudi untuk berhenti di persimpangan.',
-    },
-    {
-      'image': 'assets/images/dilarang_putar_balik.png',
-      'title': 'Dilarang putar\nbalik',
-      'category': 'Larangan',
-      'description': 'Melarang kendaraan untuk putar balik di area tersebut.',
-    },
-    {
-      'image': 'assets/images/dilarang_putar_balik.png',
-      'title': 'Dilarang putar\nbalik',
-      'category': 'Larangan',
-      'description': 'Melarang kendaraan untuk putar balik di area tersebut.',
-    },
-    {
-      'image': 'assets/images/dilarang_putar_balik.png',
-      'title': 'Dilarang putar\nbalik',
-      'category': 'Larangan',
-      'description': 'Melarang kendaraan untuk putar balik di area tersebut.',
-    },
-  ];
+  // Fungsi mengambil data dari API Service
+  Future<void> _fetchRambuData() async {
+    try {
+      final result = await ApiService.getRambuList();
+      
+      if (mounted) {
+        setState(() {
+          if (result['success']) {
+            _rambuList = result['data'];
+            _errorMessage = null;
+          } else {
+            _errorMessage = result['message'];
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Terjadi kesalahan: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
-  List<Map<String, dynamic>> getFilteredData() {
-    List<Map<String, dynamic>> filtered = rambuData;
+  // Fungsi menyusun URL gambar lengkap
+  String _getImageUrl(String? partialUrl) {
+    if (partialUrl == null || partialUrl.isEmpty) return '';
+    // Jika backend mengembalikan path relatif (misal: /static/...), gabungkan dengan Base URL
+    if (partialUrl.startsWith('/')) {
+      return '${ApiService.baseUrl}$partialUrl';
+    }
+    // Jika sudah full URL (http...), biarkan saja
+    return partialUrl;
+  }
 
+  List<dynamic> getFilteredData() {
+    List<dynamic> filtered = _rambuList;
+
+    // Filter Kategori (Case Insensitive karena backend pakai huruf kecil)
     if (selectedTab != 'Semua') {
-      filtered =
-          filtered.where((item) => item['category'] == selectedTab).toList();
+      filtered = filtered.where((item) {
+        final kategoriBackend = (item['kategori'] ?? '').toString().toLowerCase();
+        final kategoriTab = selectedTab.toLowerCase();
+        return kategoriBackend == kategoriTab;
+      }).toList();
     }
 
+    // Filter Search (Berdasarkan 'nama')
     if (searchQuery.isNotEmpty) {
-      filtered = filtered
-          .where((item) =>
-              item['title'].toLowerCase().contains(searchQuery.toLowerCase()))
-          .toList();
+      filtered = filtered.where((item) {
+        final nama = (item['nama'] ?? '').toString().toLowerCase();
+        return nama.contains(searchQuery.toLowerCase());
+      }).toList();
     }
 
     return filtered;
@@ -136,8 +146,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color:
-                                isSelected ? Colors.black : Colors.transparent,
+                            color: isSelected ? Colors.black : Colors.transparent,
                             width: 2,
                           ),
                         ),
@@ -147,8 +156,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 14,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                         ),
                       ),
                     ),
@@ -181,62 +189,77 @@ class _EdukasiPageState extends State<EdukasiPage> {
             ),
           ),
 
-          // 🔹 Grid View
+          // 🔹 Content (Loading / Error / Grid)
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.8,
-              ),
-              itemCount: getFilteredData().length,
-              itemBuilder: (context, index) {
-                final item = getFilteredData()[index];
-                return GestureDetector(
-                  onTap: () => _navigateToDetail(context, item),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Image.asset(
-                              item['image'],
-                              fit: BoxFit.contain,
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFD6D588)))
+                : _errorMessage != null
+                    ? Center(child: Text(_errorMessage!))
+                    : getFilteredData().isEmpty
+                        ? const Center(child: Text("Data tidak ditemukan"))
+                        : GridView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.8,
                             ),
+                            itemCount: getFilteredData().length,
+                            itemBuilder: (context, index) {
+                              final item = getFilteredData()[index];
+                              final imageUrl = _getImageUrl(item['gambar_url']);
+                              final namaRambu = item['nama'] ?? 'Tanpa Nama';
+
+                              return GestureDetector(
+                                onTap: () => _navigateToDetail(context, item),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: imageUrl.isNotEmpty
+                                              ? Image.network(
+                                                  imageUrl,
+                                                  fit: BoxFit.contain,
+                                                  errorBuilder: (ctx, err, stack) =>
+                                                      const Icon(Icons.broken_image, size: 40),
+                                                )
+                                              : const Icon(Icons.image_not_supported, size: 40),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Text(
+                                          namaRambu,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            item['title'],
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
           ),
         ],
       ),
