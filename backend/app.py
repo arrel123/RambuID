@@ -1,46 +1,79 @@
-import uvicorn
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from pydantic import BaseModel
-from passlib.context import CryptContext # Untuk keamanan password
+import os
+import shutil
+import uuid
+from typing import List, Optional
 
-# --- 1. KONFIGURASI DATABASE ---
+import uvicorn
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from passlib.context import CryptContext
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, Text, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
+
+# --- KONFIGURASI PATH UNTUK GAMBAR ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+IMAGES_DIR = os.path.join(STATIC_DIR, "images")
+RAMBU_IMAGES_DIR = os.path.join(IMAGES_DIR, "rambu")
+UPLOADS_DIR = os.path.join(IMAGES_DIR, "uploads")
+
+# Buat folder jika belum ada
+os.makedirs(STATIC_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
+os.makedirs(RAMBU_IMAGES_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+# --- KONFIGURASI DATABASE ---
 DATABASE_URL = "sqlite:///./rambuid.db"
 engine = create_engine(
     DATABASE_URL, 
     connect_args={
         "check_same_thread": False,
-        "timeout": 20  # Timeout 20 detik untuk menunggu lock release
+        "timeout": 20
     },
-    pool_pre_ping=True,  # Test koneksi sebelum digunakan
-    pool_recycle=3600,   # Recycle connection setiap jam
+    pool_pre_ping=True,
+    pool_recycle=3600,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# --- 2. KONFIGURASI KEAMANAN (HASHING) ---
+# --- KONFIGURASI KEAMANAN ---
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
-# --- 3. DEFINISI TABEL (MODEL DATABASE) ---
-# Tabel untuk Rambu
+# --- MODEL DATABASE ---
 class Rambu(Base):
     __tablename__ = "rambu"
     id = Column(Integer, primary_key=True, index=True)
     nama = Column(String, index=True)
     gambar_url = Column(String)
     deskripsi = Column(Text, nullable=True)
+    kategori = Column(String, nullable=False)
 
-# Tabel untuk User (Login/Register)
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True) # Username gak boleh kembar
-    password_hash = Column(String) # Kita simpan versi ter-enkripsi, bukan teks asli
+    username = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    alamat = Column(String, nullable=True)
 
-# --- 4. SKEMA DATA (VALIDASI INPUT DARI FLUTTER) ---
+# --- SCHEMA DATA ---
+class RambuCreate(BaseModel):
+    nama: str
+    deskripsi: Optional[str] = None
+
+class RambuResponse(BaseModel):
+    id: int
+    nama: str
+    gambar_url: Optional[str]
+    deskripsi: Optional[str]
+    kategori: str
+    
+    class Config:
+        from_attributes = True
+
 class UserSchema(BaseModel):
     username: str
     password: str
@@ -55,15 +88,11 @@ class LoginResponse(BaseModel):
     username: str
     user_id: int
 
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    
-    class Config:
-        from_attributes = True
+# --- SETUP APLIKASI ---
+app = FastAPI(title="RambuID API", version="1.0.0")
 
-# --- 5. SETUP APLIKASI ---
-app = FastAPI()
+# Mount static files directory (gunakan path absolut agar aman)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,16 +101,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-Base.metadata.create_all(bind=engine) # Buat file .db dan tabel baru
+Base.metadata.create_all(bind=engine)
 
-# Fungsi bantuan untuk mengambil koneksi DB
+# --- FUNGSI BANTU ---
 def get_db():
     db = SessionLocal()
     try:
         yield db
-        db.commit()  # Commit jika tidak ada exception
+        db.commit()
     except Exception:
-        db.rollback()  # Rollback jika ada error
+        db.rollback()
         raise
     finally:
         db.close()
@@ -92,7 +121,24 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-# --- 6. API ENDPOINTS ---
+def save_uploaded_file(file: UploadFile, destination_dir: str) -> str:
+    """Menyimpan file upload dan mengembalikan path relatif"""
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    
+    # Destination path
+    file_path = os.path.join(destination_dir, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Return relative path untuk URL (dengan leading slash)
+    relative_path = f"/static/images/rambu/{unique_filename}"
+    return relative_path
+
+# --- API ENDPOINTS ---
 
 @app.get("/")
 def read_root():
@@ -102,24 +148,20 @@ def read_root():
 def health_check():
     return {"status": "ok", "message": "Backend is running"}
 
-# === FITUR REGISTER ===
+# === AUTHENTICATION ===
 @app.post("/register", response_model=RegisterResponse, status_code=201)
-def register_user(user: UserSchema, db: Session = Depends(get_db)) -> RegisterResponse:
+def register_user(user: UserSchema, db: Session = Depends(get_db)):
     try:
-        # 1. Cek apakah username sudah dipakai?
         cek_user = db.query(User).filter(User.username == user.username).first()
         if cek_user:
             raise HTTPException(status_code=400, detail="Username sudah terdaftar!")
         
-        # 2. Enkripsi password
         hashed_password = hash_password(user.password)
-        
-        # 3. Simpan ke Database
         new_user = User(username=user.username, password_hash=hashed_password)
         db.add(new_user)
-        db.flush()  # Flush untuk mendapatkan ID tanpa commit
+        db.flush()
         db.refresh(new_user)
-        
+
         return RegisterResponse(
             message="Registrasi berhasil!",
             username=new_user.username,
@@ -131,39 +173,193 @@ def register_user(user: UserSchema, db: Session = Depends(get_db)) -> RegisterRe
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error saat registrasi: {str(e)}")
 
-# === FITUR LOGIN ===
 @app.post("/login", response_model=LoginResponse)
-def login_user(user: UserSchema, db: Session = Depends(get_db)) -> LoginResponse:
-    # 1. Cari user berdasarkan username
+def login_user(user: UserSchema, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
     
-    # 2. Jika user tidak ada ATAU password salah
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=400, detail="Username atau Password salah!")
     
-    # 3. Jika berhasil
     return LoginResponse(
         message="Login sukses!",
         user_id=db_user.id,
         username=db_user.username,
     )
 
-# === FITUR DATA RAMBU ===
-@app.get("/rambu/")
+# === CRUD RAMBU DENGAN GAMBAR ===
+@app.get("/rambu/", response_model=List[RambuResponse])
 def get_all_rambu(db: Session = Depends(get_db)):
-    return db.query(Rambu).all()
+    """Mendapatkan semua data rambu"""
+    rambu_list = db.query(Rambu).all()
+    
+    # Pastikan path dimulai dengan /static
+    for rambu in rambu_list:
+        if rambu.gambar_url and not rambu.gambar_url.startswith('http'):
+            # Pastikan path dimulai dengan /
+            if not rambu.gambar_url.startswith('/'):
+                rambu.gambar_url = f"/{rambu.gambar_url}"
+    
+    return rambu_list
 
-# === FITUR DATA PENGGUNA (ADMIN) ===
+@app.post("/rambu/", response_model=RambuResponse, status_code=201)
+def create_rambu(
+    nama: str = Form(...),
+    deskripsi: Optional[str] = Form(None),
+    kategori: str = Form(...),
+    gambar: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Membuat data rambu baru dengan gambar"""
+    try:
+        # Validasi kategori
+        valid_kategori = ['larangan', 'peringatan', 'petunjuk', 'perintah']
+        if kategori not in valid_kategori:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Kategori tidak valid. Pilih salah satu: {', '.join(valid_kategori)}"
+            )
+        
+        # Validasi file type
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        file_extension = os.path.splitext(gambar.filename)[1].lower()
+        
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=400, 
+                detail="Format file tidak didukung. Gunakan JPG, PNG, atau GIF"
+            )
+        
+        # Save gambar
+        gambar_path = save_uploaded_file(gambar, RAMBU_IMAGES_DIR)
+        
+        # Create rambu record
+        new_rambu = Rambu(
+            nama=nama,
+            deskripsi=deskripsi,
+            kategori=kategori,
+            gambar_url=gambar_path
+        )
+        
+        db.add(new_rambu)
+        db.flush()
+        db.refresh(new_rambu)
+        
+        # Pastikan path dimulai dengan /
+        if new_rambu.gambar_url and not new_rambu.gambar_url.startswith('/'):
+            new_rambu.gambar_url = f"/{new_rambu.gambar_url}"
+        
+        return new_rambu
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error membuat rambu: {str(e)}")
+
+@app.put("/rambu/{rambu_id}", response_model=RambuResponse)
+def update_rambu(
+    rambu_id: int,
+    nama: Optional[str] = Form(None),
+    deskripsi: Optional[str] = Form(None),
+    kategori: Optional[str] = Form(None),
+    gambar: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    """Update data rambu (dengan atau tanpa gambar baru)"""
+    try:
+        rambu = db.query(Rambu).filter(Rambu.id == rambu_id).first()
+        if not rambu:
+            raise HTTPException(status_code=404, detail="Rambu tidak ditemukan")
+        
+        # Update fields jika provided
+        if nama is not None:
+            rambu.nama = nama
+        if deskripsi is not None:
+            rambu.deskripsi = deskripsi
+        if kategori is not None:
+            # Validasi kategori
+            valid_kategori = ['larangan', 'peringatan', 'petunjuk', 'perintah']
+            if kategori not in valid_kategori:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Kategori tidak valid. Pilih salah satu: {', '.join(valid_kategori)}"
+                )
+            rambu.kategori = kategori
+        
+        # Handle gambar baru jika diupload
+        if gambar:
+            # Validasi file type
+            allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+            file_extension = os.path.splitext(gambar.filename)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Format file tidak didukung"
+                )
+            
+            # Hapus gambar lama jika ada
+            if rambu.gambar_url:
+                old_image_path = os.path.join(BASE_DIR, rambu.gambar_url)
+                if os.path.exists(old_image_path):
+                    os.remove(old_image_path)
+            
+            # Save gambar baru
+            gambar_path = save_uploaded_file(gambar, RAMBU_IMAGES_DIR)
+            rambu.gambar_url = gambar_path
+        
+        db.flush()
+        db.refresh(rambu)
+        
+        # Pastikan path dimulai dengan /
+        if rambu.gambar_url and not rambu.gambar_url.startswith('http'):
+            if not rambu.gambar_url.startswith('/'):
+                rambu.gambar_url = f"/{rambu.gambar_url}"
+        
+        return rambu
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error update rambu: {str(e)}")
+
+@app.delete("/rambu/{rambu_id}")
+def delete_rambu(rambu_id: int, db: Session = Depends(get_db)):
+    """Hapus data rambu dan gambarnya"""
+    try:
+        rambu = db.query(Rambu).filter(Rambu.id == rambu_id).first()
+        if not rambu:
+            raise HTTPException(status_code=404, detail="Rambu tidak ditemukan")
+        
+        # Hapus file gambar jika ada
+        if rambu.gambar_url:
+            image_path = os.path.join(BASE_DIR, rambu.gambar_url)
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        
+        # Hapus dari database
+        db.delete(rambu)
+        db.flush()
+        
+        return {"message": "Rambu berhasil dihapus"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error hapus rambu: {str(e)}")
+
+# === ADMIN FEATURES ===
 @app.get("/users/")
 def get_all_users(db: Session = Depends(get_db)):
-    """Endpoint untuk mendapatkan semua data pengguna (untuk admin)"""
     try:
         users = db.query(User).all()
-        # Konversi ke format yang bisa di-serialize
         users_list = [
             {
                 "id": user.id,
-                "username": user.username
+                "username": user.username,
+                "alamat": user.alamat if user.alamat else None
             }
             for user in users
         ]
@@ -171,15 +367,10 @@ def get_all_users(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saat mengambil data pengguna: {str(e)}")
 
-# === FITUR STATISTIK (ADMIN) ===
 @app.get("/stats/")
 def get_statistics(db: Session = Depends(get_db)):
-    """Endpoint untuk mendapatkan statistik dashboard admin"""
     try:
-        # Hitung total pengguna
         total_users = db.query(User).count()
-        
-        # Hitung total rambu
         total_rambu = db.query(Rambu).count()
         
         return {

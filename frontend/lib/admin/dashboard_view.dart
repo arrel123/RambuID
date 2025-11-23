@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'rambu_view.dart';
 
 class DashboardView extends StatefulWidget {
   // 🔹 REQ 3: Fungsi callback untuk pindah halaman
@@ -129,9 +130,19 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 0,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -163,15 +174,72 @@ class _SummaryCard extends StatelessWidget {
 }
 
 // --- WIDGET: _RambuPreviewCard (Helper) ---
-class _RambuPreviewCard extends StatelessWidget {
+class _RambuPreviewCard extends StatefulWidget {
   final VoidCallback onViewAll;
   const _RambuPreviewCard({required this.onViewAll});
 
   @override
+  State<_RambuPreviewCard> createState() => _RambuPreviewCardState();
+}
+
+class _RambuPreviewCardState extends State<_RambuPreviewCard> {
+  List<Rambu> _rambuList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRambuPreview();
+  }
+
+  Future<void> _loadRambuPreview() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = await ApiService.getRambuList();
+      if (result['success'] == true) {
+        final List<dynamic> data = result['data'] ?? [];
+        final loaded = data
+            .map((item) => Rambu.fromJson(item as Map<String, dynamic>))
+            .toList();
+        setState(() {
+          // Ambil maksimal 4 rambu teratas untuk preview
+          _rambuList = loaded.take(4).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Gagal memuat data rambu';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 0,
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -183,34 +251,104 @@ class _RambuPreviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Ini hanya preview, Anda bisa ganti dengan 3 data rambu teratas
-            ListTile(
-              leading: Image.asset('/images/dilarang_parkir.png', width: 40),
-              title: const Text('Dilarang Parkir'),
-              subtitle: const Text('Larangan'),
-            ),
-            ListTile(
-              leading: Image.asset('/images/tikungan.png', width: 40),
-              title: const Text('Tikungan Tajam'),
-              subtitle: const Text('Peringatan'),
-            ),
-            ListTile(
-              leading: Image.asset('/images/wajib_kiri.png', width: 40),
-              title: const Text('Wajib Belok Kiri'),
-              subtitle: const Text('Perintah'),
-            ),
-            ListTile(
-              leading: Image.asset('/images/petunjuk.jpg', width: 40),
-              title: const Text('Petunjuk Arah'),
-              subtitle: const Text('Petunjuk'),
-            ),
+            // Tampilkan loading, error, atau data rambu
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                    const SizedBox(height: 8),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.red[400]),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _loadRambuPreview,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              )
+            else if (_rambuList.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey, size: 32),
+                    SizedBox(height: 8),
+                    Text(
+                      'Belum ada data rambu',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ..._rambuList.map((rambu) {
+                return ListTile(
+                  leading: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.grey[100],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child:
+                          rambu.imageUrl != null && rambu.imageUrl!.isNotEmpty
+                          ? Image.network(
+                              rambu.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey,
+                                  ),
+                            )
+                          : const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                            ),
+                    ),
+                  ),
+                  title: Text(
+                    rambu.nama,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: rambu.kategoriColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(rambu.kategoriLabel),
+                    ],
+                  ),
+                );
+              }).toList(),
+
             const SizedBox(height: 16),
 
             // 🔹 REQ 3: Tombol untuk pindah halaman
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
-                onPressed: onViewAll, // Panggil callback-nya
+                onPressed: widget.onViewAll, // Panggil callback-nya
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.yellowAccent[700],
                   foregroundColor: Colors.black,

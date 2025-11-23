@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:rambuid/features/detailrambu.dart';
+import 'package:Rambuid/features/detailrambu.dart';
 
 class JelajahiMapsPage extends StatefulWidget {
   const JelajahiMapsPage({super.key});
@@ -14,10 +14,13 @@ class JelajahiMapsPage extends StatefulWidget {
 
 class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
   late final MapController _mapController;
-  LatLng _userPos = const LatLng(-1.1191, 104.0534); // Default Batam (Politeknik)
+  LatLng _userPos = const LatLng(
+    -1.1191,
+    104.0534,
+  ); // Default Batam (Politeknik)
   StreamSubscription<Position>? _posStream;
   String _userLocationName = 'Lokasi Anda';
-  
+
   // Untuk pencarian
   final TextEditingController _searchController = TextEditingController();
   LatLng? _destinationPos;
@@ -30,7 +33,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
     'Perintah',
     'Petunjuk',
     'Larangan',
-    'Peringatan'
+    'Peringatan',
   ];
   String _activeKategori = 'Semua';
 
@@ -74,7 +77,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
     if (permission == LocationPermission.deniedForever) return;
 
     final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+      desiredAccuracy: LocationAccuracy.high,
+    );
     setState(() {
       _userPos = LatLng(pos.latitude, pos.longitude);
       _getUserLocationName(pos);
@@ -83,13 +87,16 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
     });
     _mapController.move(_userPos, 15.0);
 
-    _posStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.best, distanceFilter: 10),
-    ).listen((p) {
-      setState(() => _userPos = LatLng(p.latitude, p.longitude));
-      _getUserLocationName(p);
-    });
+    _posStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            distanceFilter: 10,
+          ),
+        ).listen((p) {
+          setState(() => _userPos = LatLng(p.latitude, p.longitude));
+          _getUserLocationName(p);
+        });
   }
 
   // Fungsi untuk generate rambu dummy di sekitar posisi tertentu
@@ -101,7 +108,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         'category': 'Perintah',
         'lat': center.latitude,
         'lng': center.longitude + 0.001,
-        'description': 'Rambu perintah yang menginstruksikan pengendara untuk belok kanan.',
+        'description':
+            'Rambu perintah yang menginstruksikan pengendara untuk belok kanan.',
         'image': 'assets/images/dilarang_belok_kiri.png',
       },
       {
@@ -179,7 +187,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         LatLng(pos.latitude, pos.longitude),
         LatLng(lokasi['lat'], lokasi['lng']),
       );
-      if (distance < 1.0) { // dalam radius 1km
+      if (distance < 1.0) {
+        // dalam radius 1km
         setState(() => _userLocationName = 'Dekat ${lokasi['name']}');
         return;
       }
@@ -225,9 +234,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
   void _showDetailRambu(Map<String, dynamic> r) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => DetailRambuScreen(rambu: r),
-      ),
+      MaterialPageRoute(builder: (_) => DetailRambuScreen(rambu: r)),
     );
   }
 
@@ -286,13 +293,13 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                     _userPos,
                     LatLng(lokasi['lat'], lokasi['lng']),
                   );
-                  
+
                   return ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.location_on),
-                    ),
+                    leading: const CircleAvatar(child: Icon(Icons.location_on)),
                     title: Text(lokasi['name']),
-                    subtitle: Text('${distance.toStringAsFixed(1)} km dari lokasi Anda'),
+                    subtitle: Text(
+                      '${distance.toStringAsFixed(1)} km dari lokasi Anda',
+                    ),
                     onTap: () {
                       setState(() {
                         _destinationPos = LatLng(lokasi['lat'], lokasi['lng']);
@@ -358,8 +365,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                       point: _userPos,
                       width: 42,
                       height: 42,
-                      child: const Icon(Icons.person_pin_circle,
-                          color: Colors.blueAccent, size: 40),
+                      child: const Icon(
+                        Icons.person_pin_circle,
+                        color: Colors.blueAccent,
+                        size: 40,
+                      ),
                     ),
                     // Marker destinasi
                     if (_destinationPos != null)
@@ -367,8 +377,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                         point: _destinationPos!,
                         width: 42,
                         height: 42,
-                        child: const Icon(Icons.location_on,
-                            color: Colors.red, size: 40),
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.red,
+                          size: 40,
+                        ),
                       ),
                     // Marker rambu
                     ..._rambuFiltered.map(
@@ -399,7 +412,10 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
               child: GestureDetector(
                 onTap: _showSearchBottomSheet,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
@@ -445,11 +461,13 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                         selectedColor: Colors.white,
                         backgroundColor: Colors.white.withOpacity(0.9),
                         side: BorderSide(
-                            color: active
-                                ? Colors.blueAccent
-                                : Colors.grey.shade300),
+                          color: active
+                              ? Colors.blueAccent
+                              : Colors.grey.shade300,
+                        ),
                         labelStyle: TextStyle(
-                            color: active ? Colors.blueAccent : Colors.black87),
+                          color: active ? Colors.blueAccent : Colors.black87,
+                        ),
                       ),
                     );
                   }).toList(),
@@ -508,7 +526,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
@@ -552,7 +571,9 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                                     const SizedBox(height: 16),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 12, vertical: 8),
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.amber.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(8),
@@ -589,13 +610,18 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                                     const SizedBox(height: 16),
                                     Row(
                                       children: [
-                                        const Icon(Icons.circle,
-                                            size: 12, color: Colors.black),
+                                        const Icon(
+                                          Icons.circle,
+                                          size: 12,
+                                          color: Colors.black,
+                                        ),
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
                                             _userLocationName,
-                                            style: const TextStyle(fontSize: 14),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ),
                                       ],
@@ -603,8 +629,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                                     const SizedBox(height: 12),
                                     Row(
                                       children: [
-                                        const Icon(Icons.location_on,
-                                            size: 16, color: Colors.red),
+                                        const Icon(
+                                          Icons.location_on,
+                                          size: 16,
+                                          color: Colors.red,
+                                        ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
@@ -632,8 +661,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
             // 🔹 Tombol fokus ke lokasi pengguna
             Positioned(
               right: 14,
-              bottom: _showRouteInfo 
-                  ? (_isBottomSheetExpanded ? 300 : 100) 
+              bottom: _showRouteInfo
+                  ? (_isBottomSheetExpanded ? 300 : 100)
                   : 20,
               child: FloatingActionButton(
                 backgroundColor: Colors.white,
