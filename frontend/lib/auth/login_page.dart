@@ -265,7 +265,6 @@ class _LoginPageState extends State<LoginPage> {
                         TextButton(
                           onPressed: () {
                             Navigator.pushNamed(context, '/register');
-                            // Navigate to register
                           },
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
@@ -330,6 +329,8 @@ class _LoginPageState extends State<LoginPage> {
                                 if (result['success']) {
                                   // Login berhasil
                                   final data = result['data'];
+                                  final userId = data['user_id'];
+                                  final username = data['username'];
 
                                   // Cek apakah admin (dummy check - bisa diganti dengan field dari backend)
                                   final adminEmails = [
@@ -344,6 +345,8 @@ class _LoginPageState extends State<LoginPage> {
 
                                   // Debug log
                                   print('🔵 Login: Email = $email');
+                                  print('🔵 Login: UserId = $userId');
+                                  print('🔵 Login: Username = $username');
                                   print('🔵 Login: isAdmin = $isAdmin');
 
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -365,9 +368,14 @@ class _LoginPageState extends State<LoginPage> {
                                       '/admin/dashboard_view',
                                     );
                                   } else {
+                                    // 🔹 Pass userId dan username ke HomePage
                                     Navigator.pushReplacementNamed(
                                       context,
                                       '/home',
+                                      arguments: {
+                                        'userId': userId,
+                                        'username': username,
+                                      },
                                     );
                                   }
                                 } else {

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 import 'edit_profil.dart';
 
 class TentangPribadiPage extends StatefulWidget {
+  final int userId;
   final String initialNama;
   final String initialEmail;
   final String initialAlamat;
+  final String? initialProfileImage;
   final String initialPassword;
 
   const TentangPribadiPage({
     super.key,
-    this.initialNama = 'Andika Dwi',
-    this.initialEmail = 'rezzy123@gmail.com',
-    this.initialAlamat = 'Batam center',
+    required this.userId,
+    this.initialNama = 'Pengguna',
+    this.initialEmail = 'user@gmail.com',
+    this.initialAlamat = 'Belum ada alamat',
+    this.initialProfileImage,
     this.initialPassword = '••••••••',
   });
 
@@ -23,6 +29,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
   late String _namaLengkap;
   late String _email;
   late String _alamat;
+  String? _profileImage;
   late String _password;
 
   @override
@@ -31,6 +38,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
     _namaLengkap = widget.initialNama;
     _email = widget.initialEmail;
     _alamat = widget.initialAlamat;
+    _profileImage = widget.initialProfileImage;
     _password = widget.initialPassword;
   }
 
@@ -39,6 +47,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
     String email,
     String alamat,
     String? password,
+    String? profileImage,
   ) {
     setState(() {
       _namaLengkap = nama;
@@ -47,11 +56,16 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
       if (password != null && password.isNotEmpty) {
         _password = '••••••••'; // Always display masked password
       }
+      if (profileImage != null) {
+        _profileImage = profileImage;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -76,10 +90,10 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                   ),
                   const SizedBox(width: 16),
                   // Title
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Tentang Pribadi',
-                      style: TextStyle(
+                      l10n.personalInfo,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
@@ -93,9 +107,11 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditProfilPage(
+                            userId: widget.userId,
                             initialNama: _namaLengkap,
                             initialEmail: _email,
                             initialAlamat: _alamat,
+                            initialProfileImage: _profileImage,
                           ),
                         ),
                       );
@@ -106,20 +122,30 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                           result['email'] as String,
                           result['alamat'] as String,
                           result['password'] as String?,
+                          result['profileImage'] as String?,
                         );
+
+                        // Return data ke SettingAccPage
                         if (mounted) {
+                          Navigator.pop(context, {
+                            'nama': _namaLengkap,
+                            'email': _email,
+                            'alamat': _alamat,
+                            'profileImage': _profileImage,
+                          });
+
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Profil berhasil disimpan!'),
+                            SnackBar(
+                              content: Text(l10n.profileUpdateSuccess),
                               backgroundColor: Colors.green,
                             ),
                           );
                         }
                       }
                     },
-                    child: const Text(
-                      'EDIT',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.edit.toUpperCase(),
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.black87,
@@ -144,10 +170,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                       height: 100,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        image: const DecorationImage(
-                          image: AssetImage('assets/images/profile.png'),
-                          fit: BoxFit.cover,
-                        ),
+                        color: Colors.grey[200],
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -155,6 +178,25 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                             offset: const Offset(0, 4),
                           ),
                         ],
+                      ),
+                      child: ClipOval(
+                        child: _profileImage != null && _profileImage!.isNotEmpty
+                            ? Image.network(
+                                '${ApiService.baseUrl}$_profileImage',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: Colors.grey[400],
+                                  );
+                                },
+                              )
+                            : Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.grey[400],
+                              ),
                       ),
                     ),
 
@@ -175,7 +217,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                     // Information Cards
                     _buildInfoCard(
                       icon: Icons.person_outline,
-                      label: 'NAMA LENGKAP',
+                      label: l10n.fullName,
                       value: _namaLengkap,
                     ),
 
@@ -183,7 +225,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
 
                     _buildInfoCard(
                       icon: Icons.email_outlined,
-                      label: 'EMAIL',
+                      label: l10n.email,
                       value: _email,
                     ),
 
@@ -191,7 +233,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
 
                     _buildInfoCard(
                       icon: Icons.location_on_outlined,
-                      label: 'ALAMAT',
+                      label: l10n.address,
                       value: _alamat,
                     ),
 
@@ -199,7 +241,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
 
                     _buildInfoCard(
                       icon: Icons.lock_outlined,
-                      label: 'KATA SANDI',
+                      label: l10n.password,
                       value: _password,
                     ),
                   ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import '../services/api_service.dart'; // Import API Service untuk URL
+import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 
 class DetailRambuScreen extends StatefulWidget {
   final Map<String, dynamic> rambu;
@@ -55,7 +56,6 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     }
 
     try {
-      // Ubah akses key sesuai database: 'nama' dan 'deskripsi'
       String namaRambu = (widget.rambu['nama'] ?? '').replaceAll('\n', ' ');
       String deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
       String textToSpeak = "Rambu $namaRambu, yaitu $deskripsi";
@@ -86,7 +86,6 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     super.dispose();
   }
 
-  // Helper untuk mendapatkan URL gambar
   String _getImageUrl() {
     String? partialUrl = widget.rambu['gambar_url'];
     if (partialUrl == null || partialUrl.isEmpty) return '';
@@ -98,7 +97,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil data menggunakan key dari database
+    final l10n = AppLocalizations.of(context);
     final nama = widget.rambu['nama'] ?? 'Tanpa Nama';
     final kategori = widget.rambu['kategori'] ?? '-';
     final deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
@@ -116,9 +115,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
             Navigator.pop(context);
           },
         ),
-        title: const Text(
-          'Detail Rambu',
-          style: TextStyle(
+        title: Text(
+          l10n.translate('sign_detail'),
+          style: const TextStyle(
             color: Colors.black87,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -135,7 +134,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
             children: [
               const SizedBox(height: 10),
 
-              // Rambu Image (Sekarang pakai Network)
+              // Rambu Image
               Container(
                 width: 150,
                 height: 150,
@@ -177,9 +176,9 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
               const SizedBox(height: 20),
 
-              const Text(
-                'KETERANGAN',
-                style: TextStyle(
+              Text(
+                l10n.translate('information'),
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -209,20 +208,19 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildInfoSection(
-                      title: 'NAMA RAMBU',
+                      title: l10n.translate('sign_name'),
                       content: nama.replaceAll('\n', ' ').toUpperCase(),
                     ),
                     const SizedBox(height: 20),
                     _buildInfoSection(
-                      title: 'JENIS RAMBU',
-                      // Capitalize huruf pertama kategori
+                      title: l10n.translate('sign_type'),
                       content: kategori.isNotEmpty 
                           ? '${kategori[0].toUpperCase()}${kategori.substring(1)}'
                           : '-',
                     ),
                     const SizedBox(height: 20),
                     _buildInfoSection(
-                      title: 'KETERANGAN',
+                      title: l10n.translate('information'),
                       content: deskripsi,
                     ),
                   ],
@@ -231,7 +229,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
 
               const SizedBox(height: 24),
 
-              // Dengarkan Button
+              // Listen Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -242,7 +240,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                     size: 24,
                   ),
                   label: Text(
-                    isSpeaking ? 'Berhenti' : 'Dengarkan',
+                    isSpeaking ? l10n.translate('stop') : l10n.translate('listen'),
                     style: const TextStyle(
                       color: Colors.black87,
                       fontSize: 16,

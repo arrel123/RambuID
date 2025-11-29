@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
+import '../providers/language_provider.dart';
 
-class BahasaPage extends StatefulWidget {
+class BahasaPage extends StatelessWidget {
   const BahasaPage({super.key});
 
   @override
-  State<BahasaPage> createState() => _BahasaPageState();
-}
-
-class _BahasaPageState extends State<BahasaPage> {
-  String selectedLanguage = 'id'; // 'id' for Indonesian, 'en' for English
-
-  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final currentLanguage = languageProvider.locale.languageCode;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -36,10 +36,10 @@ class _BahasaPageState extends State<BahasaPage> {
                   ),
                   const SizedBox(width: 16),
                   // Title
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Bahasa',
-                      style: TextStyle(
+                      l10n.language,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
@@ -55,15 +55,19 @@ class _BahasaPageState extends State<BahasaPage> {
               child: Column(
                 children: [
                   _buildLanguageOption(
+                    context: context,
                     code: 'en',
                     title: 'ENGLISH',
                     subtitle: '(EN)',
+                    isSelected: currentLanguage == 'en',
                   ),
                   _buildDivider(),
                   _buildLanguageOption(
+                    context: context,
                     code: 'id',
                     title: 'BAHASA INDONESIA',
                     subtitle: '(Default)',
+                    isSelected: currentLanguage == 'id',
                   ),
                   _buildDivider(),
                 ],
@@ -76,16 +80,16 @@ class _BahasaPageState extends State<BahasaPage> {
   }
 
   Widget _buildLanguageOption({
+    required BuildContext context,
     required String code,
     required String title,
     required String subtitle,
+    required bool isSelected,
   }) {
-    final bool isSelected = selectedLanguage == code;
-
     return GestureDetector(
       onTap: () {
         if (!isSelected) {
-          _showLanguageConfirmationDialog(code);
+          _showLanguageConfirmationDialog(context, code);
         }
       },
       child: Container(
@@ -141,56 +145,61 @@ class _BahasaPageState extends State<BahasaPage> {
     );
   }
 
-  void _showLanguageConfirmationDialog(String newLanguage) {
-    final String languageName = newLanguage == 'en'
-        ? 'English'
-        : 'Bahasa Indonesia';
+  void _showLanguageConfirmationDialog(BuildContext context, String newLanguage) {
+    final l10n = AppLocalizations.of(context);
+    final languageName = newLanguage == 'en' ? l10n.english : l10n.indonesian;
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          title: const Text(
-            'Ganti Bahasa',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          title: Text(
+            l10n.changeLanguage,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           content: Text(
-            'Apakah Anda yakin ingin mengubah bahasa ke $languageName?',
+            '${l10n.confirmLanguageChange} $languageName?',
             style: const TextStyle(fontSize: 14),
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
               },
-              child: const Text(
-                'Batal',
-                style: TextStyle(
+              child: Text(
+                l10n.cancel,
+                style: const TextStyle(
                   color: Colors.grey,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  selectedLanguage = newLanguage;
-                });
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Bahasa berhasil diubah ke $languageName'),
-                    backgroundColor: const Color(0xFF8B9C4A),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+              onPressed: () async {
+                // Ubah bahasa menggunakan Provider
+                await Provider.of<LanguageProvider>(context, listen: false)
+                    .changeLanguage(newLanguage);
+                
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${l10n.languageChanged} $languageName'),
+                      backgroundColor: const Color(0xFF8B9C4A),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               },
-              child: const Text(
-                'Ya',
-                style: TextStyle(
+              child: Text(
+                l10n.yes,
+                style: const TextStyle(
                   color: Color(0xFFD6D588),
                   fontWeight: FontWeight.bold,
                 ),

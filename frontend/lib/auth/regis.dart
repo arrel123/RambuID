@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
-// 📹 Clipper untuk lengkungan di bagian atas
+// 🔹 Clipper untuk lengkungan di bagian atas
 class ConvexClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -56,12 +56,17 @@ class _RegisPageState extends State<RegisPage> {
         _isLoading = true;
       });
 
-      // Ambil email sebagai username (backend menggunakan username)
+      // Ambil data dari form
+      final nama = _nameController.text.trim();
       final username = _emailController.text.trim();
       final password = _passwordController.text;
 
-      // Panggil API register
-      final result = await ApiService.register(username, password);
+      // Panggil API register dengan nama lengkap
+      final result = await ApiService.register(
+        username, 
+        password,
+        namaLengkap: nama, // 🔹 Kirim nama lengkap ke backend
+      );
 
       // Reset loading state
       setState(() {
@@ -112,7 +117,7 @@ class _RegisPageState extends State<RegisPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // 📸 Bagian header kuning dengan lengkungan & logo rambu
+              // 🔸 Bagian header kuning dengan lengkungan & logo rambu
               ClipPath(
                 clipper: ConvexClipper(),
                 child: Container(
@@ -150,7 +155,7 @@ class _RegisPageState extends State<RegisPage> {
                 ),
               ),
 
-              // 📸 Form Daftar
+              // 🔸 Form Daftar
               Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Form(
@@ -355,8 +360,8 @@ class _RegisPageState extends State<RegisPage> {
                           if (value == null || value.isEmpty) {
                             return "Kata sandi tidak boleh kosong";
                           }
-                          if (value.length < 8) {
-                            return "Minimal 8 karakter";
+                          if (value.length < 6) {
+                            return "Minimal 6 karakter";
                           }
                           return null;
                         },

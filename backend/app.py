@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from passlib.context import CryptContext
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,12 +18,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 IMAGES_DIR = os.path.join(STATIC_DIR, "images")
 RAMBU_IMAGES_DIR = os.path.join(IMAGES_DIR, "rambu")
+PROFILE_IMAGES_DIR = os.path.join(IMAGES_DIR, "profiles")
 UPLOADS_DIR = os.path.join(IMAGES_DIR, "uploads")
 
 # Buat folder jika belum ada
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(IMAGES_DIR, exist_ok=True)
 os.makedirs(RAMBU_IMAGES_DIR, exist_ok=True)
+os.makedirs(PROFILE_IMAGES_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # --- KONFIGURASI DATABASE ---
@@ -58,6 +60,8 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     password_hash = Column(String)
     alamat = Column(String, nullable=True)
+    nama_lengkap = Column(String, nullable=True)
+    profile_image = Column(String, nullable=True)
 
 # --- SCHEMA DATA ---
 class RambuCreate(BaseModel):
@@ -77,6 +81,7 @@ class RambuResponse(BaseModel):
 class UserSchema(BaseModel):
     username: str
     password: str
+    nama_lengkap: Optional[str] = None
 
 class RegisterResponse(BaseModel):
     message: str
@@ -87,6 +92,22 @@ class LoginResponse(BaseModel):
     message: str
     username: str
     user_id: int
+
+class UserProfileResponse(BaseModel):
+    id: int
+    username: str
+    nama_lengkap: Optional[str]
+    alamat: Optional[str]
+    profile_image: Optional[str]
+    
+    class Config:
+        from_attributes = True
+
+class UpdateProfileRequest(BaseModel):
+    nama_lengkap: Optional[str] = None
+    username: Optional[str] = None
+    alamat: Optional[str] = None
+    password: Optional[str] = None
 
 # --- SETUP APLIKASI ---
 app = FastAPI(title="RambuID API", version="1.0.0")
@@ -121,11 +142,11 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-def save_uploaded_file(file: UploadFile, destination_dir: str) -> str:
+def save_uploaded_file(file: UploadFile, destination_dir: str, prefix: str = "") -> str:
     """Menyimpan file upload dan mengembalikan path relatif"""
     # Generate unique filename
     file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    unique_filename = f"{prefix}{uuid.uuid4()}{file_extension}"
     
     # Destination path
     file_path = os.path.join(destination_dir, unique_filename)
@@ -135,7 +156,8 @@ def save_uploaded_file(file: UploadFile, destination_dir: str) -> str:
         shutil.copyfileobj(file.file, buffer)
     
     # Return relative path untuk URL (dengan leading slash)
-    relative_path = f"/static/images/rambu/{unique_filename}"
+    folder_name = os.path.basename(destination_dir)
+    relative_path = f"/static/images/{folder_name}/{unique_filename}"
     return relative_path
 
 # --- API ENDPOINTS ---
@@ -157,7 +179,11 @@ def register_user(user: UserSchema, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="Username sudah terdaftar!")
         
         hashed_password = hash_password(user.password)
-        new_user = User(username=user.username, password_hash=hashed_password)
+        new_user = User(
+            username=user.username, 
+            password_hash=hashed_password,
+            nama_lengkap=user.nama_lengkap  # Tambahkan nama lengkap
+        )
         db.add(new_user)
         db.flush()
         db.refresh(new_user)
@@ -185,6 +211,130 @@ def login_user(user: UserSchema, db: Session = Depends(get_db)):
         user_id=db_user.id,
         username=db_user.username,
     )
+
+# === USER PROFILE ENDPOINTS ===
+@app.get("/users/{user_id}/profile", response_model=UserProfileResponse)
+def get_user_profile(user_id: int, db: Session = Depends(get_db)):
+    """Mendapatkan profil user berdasarkan ID"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    
+    # Pastikan path profile image dimulai dengan /
+    if user.profile_image and not user.profile_image.startswith('http'):
+        if not user.profile_image.startswith('/'):
+            user.profile_image = f"/{user.profile_image}"
+    
+    return user
+
+@app.put("/users/{user_id}/profile", response_model=UserProfileResponse)
+def update_user_profile(
+    user_id: int,
+    nama_lengkap: Optional[str] = Form(None),
+    username: Optional[str] = Form(None),
+    alamat: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    profile_image: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    """Update profil user (dengan atau tanpa foto profil baru)"""
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User tidak ditemukan")
+        
+        # Update nama lengkap jika provided
+        if nama_lengkap is not None:
+            user.nama_lengkap = nama_lengkap
+        
+        # Update username jika provided dan belum digunakan
+        if username is not None and username != user.username:
+            existing_user = db.query(User).filter(User.username == username).first()
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Username sudah digunakan")
+            user.username = username
+        
+        # Update alamat jika provided
+        if alamat is not None:
+            user.alamat = alamat
+        
+        # Update password jika provided
+        if password is not None and password.strip():
+            if len(password) < 6:
+                raise HTTPException(status_code=400, detail="Password minimal 6 karakter")
+            user.password_hash = hash_password(password)
+        
+        # Handle profile image baru jika diupload
+        if profile_image:
+            # Validasi file type
+            allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+            file_extension = os.path.splitext(profile_image.filename)[1].lower()
+            
+            if file_extension not in allowed_extensions:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Format file tidak didukung. Gunakan JPG, PNG, atau GIF"
+                )
+            
+            # Hapus foto profil lama jika ada
+            if user.profile_image:
+                old_image_path = os.path.join(BASE_DIR, user.profile_image.lstrip('/'))
+                if os.path.exists(old_image_path):
+                    try:
+                        os.remove(old_image_path)
+                    except:
+                        pass
+            
+            # Save foto profil baru
+            image_path = save_uploaded_file(profile_image, PROFILE_IMAGES_DIR, prefix="profile_")
+            user.profile_image = image_path
+        
+        db.flush()
+        db.refresh(user)
+        
+        # Pastikan path dimulai dengan /
+        if user.profile_image and not user.profile_image.startswith('http'):
+            if not user.profile_image.startswith('/'):
+                user.profile_image = f"/{user.profile_image}"
+        
+        return user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error update profil: {str(e)}")
+
+@app.delete("/users/{user_id}/profile-image")
+def delete_profile_image(user_id: int, db: Session = Depends(get_db)):
+    """Hapus foto profil user"""
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User tidak ditemukan")
+        
+        if not user.profile_image:
+            raise HTTPException(status_code=400, detail="User tidak memiliki foto profil")
+        
+        # Hapus file foto profil
+        image_path = os.path.join(BASE_DIR, user.profile_image.lstrip('/'))
+        if os.path.exists(image_path):
+            os.remove(image_path)
+        
+        # Set profile_image ke None
+        user.profile_image = None
+        db.flush()
+        
+        return {"message": "Foto profil berhasil dihapus"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error hapus foto profil: {str(e)}")
 
 # === CRUD RAMBU DENGAN GAMBAR ===
 @app.get("/rambu/", response_model=List[RambuResponse])
@@ -300,7 +450,7 @@ def update_rambu(
             
             # Hapus gambar lama jika ada
             if rambu.gambar_url:
-                old_image_path = os.path.join(BASE_DIR, rambu.gambar_url)
+                old_image_path = os.path.join(BASE_DIR, rambu.gambar_url.lstrip('/'))
                 if os.path.exists(old_image_path):
                     os.remove(old_image_path)
             
@@ -334,7 +484,7 @@ def delete_rambu(rambu_id: int, db: Session = Depends(get_db)):
         
         # Hapus file gambar jika ada
         if rambu.gambar_url:
-            image_path = os.path.join(BASE_DIR, rambu.gambar_url)
+            image_path = os.path.join(BASE_DIR, rambu.gambar_url.lstrip('/'))
             if os.path.exists(image_path):
                 os.remove(image_path)
         
@@ -359,7 +509,9 @@ def get_all_users(db: Session = Depends(get_db)):
             {
                 "id": user.id,
                 "username": user.username,
-                "alamat": user.alamat if user.alamat else None
+                "nama_lengkap": user.nama_lengkap if user.nama_lengkap else None,
+                "alamat": user.alamat if user.alamat else None,
+                "profile_image": user.profile_image if user.profile_image else None
             }
             for user in users
         ]

@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 
 class EditProfilPage extends StatefulWidget {
+  final int userId;
   final String initialNama;
   final String initialEmail;
   final String initialAlamat;
+  final String? initialProfileImage;
   final String initialPassword;
 
   const EditProfilPage({
     super.key,
-    this.initialNama = 'Andika Dwi',
-    this.initialEmail = 'rezzy123@gmail.com',
-    this.initialAlamat = 'Batam center',
+    required this.userId,
+    this.initialNama = 'Pengguna',
+    this.initialEmail = 'user@gmail.com',
+    this.initialAlamat = 'Belum ada alamat',
+    this.initialProfileImage,
     this.initialPassword = '••••••••',
   });
 
@@ -28,18 +35,20 @@ class _EditProfilPageState extends State<EditProfilPage> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  File? _selectedImage;
-
+  
+  XFile? _selectedImage;
+  String? _currentProfileImage;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Set initial values
     _namaController.text = widget.initialNama;
     _emailController.text = widget.initialEmail;
     _alamatController.text = widget.initialAlamat;
+    _currentProfileImage = widget.initialProfileImage;
   }
 
   @override
@@ -52,8 +61,102 @@ class _EditProfilPageState extends State<EditProfilPage> {
     super.dispose();
   }
 
+  Future<void> _saveProfile() async {
+    final l10n = AppLocalizations.of(context);
+    
+    // Validate
+    if (_namaController.text.trim().isEmpty) {
+      _showSnackBar(l10n.nameRequired, Colors.red);
+      return;
+    }
+
+    if (_emailController.text.trim().isEmpty) {
+      _showSnackBar(l10n.emailRequired, Colors.red);
+      return;
+    }
+
+    if (!_isValidEmail(_emailController.text.trim())) {
+      _showSnackBar(l10n.emailInvalid, Colors.red);
+      return;
+    }
+
+    if (_alamatController.text.trim().isEmpty) {
+      _showSnackBar(l10n.addressRequired, Colors.red);
+      return;
+    }
+
+    // Validate passwords if provided
+    if (_passwordController.text.trim().isNotEmpty ||
+        _confirmPasswordController.text.trim().isNotEmpty) {
+      if (_passwordController.text.trim().isEmpty) {
+        _showSnackBar(l10n.passwordRequired, Colors.red);
+        return;
+      }
+
+      if (_passwordController.text.trim().length < 6) {
+        _showSnackBar(l10n.passwordMin, Colors.red);
+        return;
+      }
+
+      if (_passwordController.text.trim() !=
+          _confirmPasswordController.text.trim()) {
+        _showSnackBar(l10n.passwordNotMatch, Colors.red);
+        return;
+      }
+    }
+
+    // Start loading
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Call API
+    final result = await ApiService.updateUserProfile(
+      userId: widget.userId,
+      namaLengkap: _namaController.text.trim(),
+      username: _emailController.text.trim(),
+      alamat: _alamatController.text.trim(),
+      password: _passwordController.text.trim().isNotEmpty
+          ? _passwordController.text.trim()
+          : null,
+      profileImage: _selectedImage,
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success']) {
+      final data = result['data'];
+      
+      // Return updated data
+      if (mounted) {
+        Navigator.pop(context, {
+          'nama': data['nama_lengkap'] ?? _namaController.text.trim(),
+          'email': data['username'] ?? _emailController.text.trim(),
+          'alamat': data['alamat'] ?? _alamatController.text.trim(),
+          'password': _passwordController.text.trim(),
+          'profileImage': data['profile_image'],
+        });
+      }
+    } else {
+      _showSnackBar(result['message'] ?? l10n.profileUpdateFailed, Colors.red);
+    }
+  }
+
+  void _showSnackBar(String message, Color backgroundColor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -78,10 +181,10 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   ),
                   const SizedBox(width: 16),
                   // Title
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Ubah Profil',
-                      style: TextStyle(
+                      l10n.editProfile,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
@@ -108,17 +211,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                           height: 100,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            image: _selectedImage != null
-                                ? DecorationImage(
-                                    image: FileImage(_selectedImage!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : const DecorationImage(
-                                    image: AssetImage(
-                                      'assets/images/profile.png',
-                                    ),
-                                    fit: BoxFit.cover,
-                                  ),
+                            color: Colors.grey[200],
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.1),
@@ -126,6 +219,36 @@ class _EditProfilPageState extends State<EditProfilPage> {
                                 offset: const Offset(0, 4),
                               ),
                             ],
+                          ),
+                          child: ClipOval(
+                            child: _selectedImage != null
+                                ? (kIsWeb
+                                    ? Image.network(
+                                        _selectedImage!.path,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Image.file(
+                                        File(_selectedImage!.path),
+                                        fit: BoxFit.cover,
+                                      ))
+                                : (_currentProfileImage != null &&
+                                        _currentProfileImage!.isNotEmpty
+                                    ? Image.network(
+                                        '${ApiService.baseUrl}$_currentProfileImage',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Icon(
+                                            Icons.person,
+                                            size: 50,
+                                            color: Colors.grey[400],
+                                          );
+                                        },
+                                      )
+                                    : Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: Colors.grey[400],
+                                      )),
                           ),
                         ),
                         Positioned(
@@ -154,7 +277,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
                     // Form Fields
                     _buildTextField(
-                      label: 'NAMA',
+                      label: l10n.name,
                       controller: _namaController,
                       maxLines: 1,
                     ),
@@ -162,7 +285,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     const SizedBox(height: 20),
 
                     _buildTextField(
-                      label: 'EMAIL',
+                      label: l10n.email,
                       controller: _emailController,
                       maxLines: 1,
                       keyboardType: TextInputType.emailAddress,
@@ -171,7 +294,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     const SizedBox(height: 20),
 
                     _buildTextField(
-                      label: 'ALAMAT',
+                      label: l10n.address,
                       controller: _alamatController,
                       maxLines: 3,
                     ),
@@ -179,7 +302,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     const SizedBox(height: 20),
 
                     _buildPasswordField(
-                      label: 'KATA SANDI BARU',
+                      label: l10n.newPassword,
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       onToggleObscure: () {
@@ -192,7 +315,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     const SizedBox(height: 20),
 
                     _buildPasswordField(
-                      label: 'KONFIRMASI KATA SANDI BARU',
+                      label: l10n.confirmPassword,
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
                       onToggleObscure: () {
@@ -208,97 +331,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Validate and save profile
-                          if (_namaController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Nama tidak boleh kosong'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          if (_emailController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Email tidak boleh kosong'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          // Validate email format
-                          if (!_isValidEmail(_emailController.text.trim())) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Format email tidak valid'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          if (_alamatController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Alamat tidak boleh kosong'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          // Validate passwords
-                          if (_passwordController.text.trim().isNotEmpty ||
-                              _confirmPasswordController.text
-                                  .trim()
-                                  .isNotEmpty) {
-                            if (_passwordController.text.trim().isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Kata sandi baru harus diisi'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (_passwordController.text.trim().length < 6) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Kata sandi minimal 6 karakter',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (_passwordController.text.trim() !=
-                                _confirmPasswordController.text.trim()) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Kata sandi tidak cocok'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                              return;
-                            }
-                          }
-
-                          // Return updated data
-                          Navigator.pop(context, {
-                            'nama': _namaController.text.trim(),
-                            'email': _emailController.text.trim(),
-                            'alamat': _alamatController.text.trim(),
-                            'password': _passwordController.text.trim(),
-                            'profileImage': _selectedImage?.path,
-                          });
-                        },
+                        onPressed: _isLoading ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D588),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -306,15 +339,27 @@ class _EditProfilPageState extends State<EditProfilPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
+                          disabledBackgroundColor: const Color(0xFFCCCCCC),
                         ),
-                        child: const Text(
-                          'SIMPAN',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.black87,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                l10n.save.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -437,14 +482,14 @@ class _EditProfilPageState extends State<EditProfilPage> {
     );
   }
 
-  // Email validation method
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     return emailRegex.hasMatch(email);
   }
 
-  // Show dialog for choosing image source
   void _showImagePickerDialog() {
+    final l10n = AppLocalizations.of(context);
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -458,11 +503,11 @@ class _EditProfilPageState extends State<EditProfilPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Text(
-                    'Pilih Foto Profil',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    l10n.chooseProfilePhoto,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 ListTile(
@@ -470,7 +515,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     Icons.camera_alt,
                     color: Color(0xFFD6D588),
                   ),
-                  title: const Text('Ambil dari Kamera'),
+                  title: Text(l10n.takeFromCamera),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImageFromCamera();
@@ -481,20 +526,21 @@ class _EditProfilPageState extends State<EditProfilPage> {
                     Icons.photo_library,
                     color: Color(0xFFD6D588),
                   ),
-                  title: const Text('Pilih dari Galeri'),
+                  title: Text(l10n.chooseFromGallery),
                   onTap: () {
                     Navigator.pop(context);
                     _pickImageFromGallery();
                   },
                 ),
-                if (_selectedImage != null)
+                if (_selectedImage != null || _currentProfileImage != null)
                   ListTile(
                     leading: const Icon(Icons.delete, color: Colors.red),
-                    title: const Text('Hapus Foto'),
+                    title: Text(l10n.removePhoto),
                     onTap: () {
                       Navigator.pop(context);
                       setState(() {
                         _selectedImage = null;
+                        _currentProfileImage = null;
                       });
                     },
                   ),
@@ -507,8 +553,9 @@ class _EditProfilPageState extends State<EditProfilPage> {
     );
   }
 
-  // Pick image from camera
   Future<void> _pickImageFromCamera() async {
+    final l10n = AppLocalizations.of(context);
+    
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.camera,
@@ -517,23 +564,19 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImage = image;
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal mengambil foto dari kamera'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar(l10n.cameraError, Colors.red);
       }
     }
   }
 
-  // Pick image from gallery
   Future<void> _pickImageFromGallery() async {
+    final l10n = AppLocalizations.of(context);
+    
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -542,17 +585,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
 
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImage = image;
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memilih gambar dari galeri'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar(l10n.galleryError, Colors.red);
       }
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'edukasi.dart'; // pastikan path sesuai proyekmu
+import '../l10n/app_localizations.dart';
+import 'edukasi.dart';
 
 class KatalogRambuScreen extends StatelessWidget {
   const KatalogRambuScreen({super.key});
@@ -15,6 +16,8 @@ class KatalogRambuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -48,9 +51,9 @@ class KatalogRambuScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Katalog Rambu',
-                      style: TextStyle(
+                    Text(
+                      l10n.trafficSignsCatalog,
+                      style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
@@ -66,36 +69,36 @@ class KatalogRambuScreen extends StatelessWidget {
                         childAspectRatio: 1.0,
                         children: [
                           _buildMenuCard(
+                            context: context,
                             icon: Icons.do_not_disturb,
-                            label: 'Larangan',
+                            label: l10n.translate('category_prohibition'),
                             color: const Color(0xFFE53935),
                             iconColor: Colors.white,
-                            onTap: () =>
-                                _navigateToEdukasi(context, 'Larangan'),
+                            onTap: () => _navigateToEdukasi(context, 'Larangan'),
                           ),
                           _buildMenuCard(
+                            context: context,
                             icon: Icons.warning,
-                            label: 'Peringatan',
+                            label: l10n.translate('category_warning'),
                             color: const Color(0xFFFFC107),
                             iconColor: Colors.white,
-                            onTap: () =>
-                                _navigateToEdukasi(context, 'Peringatan'),
+                            onTap: () => _navigateToEdukasi(context, 'Peringatan'),
                           ),
                           _buildMenuCard(
+                            context: context,
                             icon: Icons.arrow_forward,
-                            label: 'Perintah',
+                            label: l10n.translate('category_command'),
                             color: const Color(0xFF1E88E5),
                             iconColor: Colors.white,
-                            onTap: () =>
-                                _navigateToEdukasi(context, 'Perintah'),
+                            onTap: () => _navigateToEdukasi(context, 'Perintah'),
                           ),
                           _buildMenuCard(
+                            context: context,
                             icon: Icons.arrow_upward,
-                            label: 'Petunjuk',
+                            label: l10n.translate('category_direction'),
                             color: const Color(0xFF00897B),
                             iconColor: Colors.white,
-                            onTap: () =>
-                                _navigateToEdukasi(context, 'Petunjuk'),
+                            onTap: () => _navigateToEdukasi(context, 'Petunjuk'),
                           ),
                         ],
                       ),
@@ -111,6 +114,7 @@ class KatalogRambuScreen extends StatelessWidget {
   }
 
   Widget _buildMenuCard({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required Color color,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 import 'tentang_pribadi.dart';
 import 'bahasa.dart';
 import 'riwayat.dart';
@@ -6,27 +8,94 @@ import 'bantuan.dart';
 import 'tentang_kami.dart';
 
 class SettingAccPage extends StatefulWidget {
-  const SettingAccPage({super.key});
+  final int userId;
+  final String username;
+
+  const SettingAccPage({
+    super.key,
+    required this.userId,
+    required this.username,
+  });
 
   @override
   State<SettingAccPage> createState() => _SettingAccPageState();
 }
 
 class _SettingAccPageState extends State<SettingAccPage> {
-  String _namaLengkap = 'Andika Dwi';
-  String _email = 'rezzy123@gmail.com';
-  String _alamat = 'Batam center';
+  String _namaLengkap = '';
+  String _email = '';
+  String _alamat = '';
+  String? _profileImage;
+  bool _isLoading = true;
 
-  void _updateProfile(String nama, String email, String alamat) {
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await ApiService.getUserProfile(widget.userId);
+
+    if (result['success']) {
+      final profile = result['data'];
+      setState(() {
+        _namaLengkap = profile['nama_lengkap'] ?? 'Pengguna';
+        _email = profile['username'] ?? widget.username;
+        _alamat = profile['alamat'] ?? 'Belum ada alamat';
+        _profileImage = profile['profile_image'];
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _namaLengkap = 'Pengguna';
+        _email = widget.username;
+        _alamat = 'Belum ada alamat';
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? l10n.profileLoadFailed),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  void _updateProfile(String nama, String email, String alamat, String? profileImage) {
     setState(() {
       _namaLengkap = nama;
       _email = email;
       _alamat = alamat;
+      if (profileImage != null) {
+        _profileImage = profileImage;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFD6D588),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -41,17 +110,43 @@ class _SettingAccPageState extends State<SettingAccPage> {
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/profile.png'),
-                    fit: BoxFit.cover,
-                  ),
                   border: Border.all(color: const Color(0xFFD6D588), width: 3),
+                  color: Colors.grey[200],
+                ),
+                child: ClipOval(
+                  child: _profileImage != null && _profileImage!.isNotEmpty
+                      ? Image.network(
+                          '${ApiService.baseUrl}$_profileImage',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.grey[400],
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: const Color(0xFFD6D588),
+                              ),
+                            );
+                          },
+                        )
+                      : Icon(
+                          Icons.person,
+                          size: 60,
+                          color: Colors.grey[400],
+                        ),
                 ),
               ),
 
               const SizedBox(height: 20),
-
-              // Name
               Text(
                 _namaLengkap,
                 style: const TextStyle(
@@ -60,18 +155,12 @@ class _SettingAccPageState extends State<SettingAccPage> {
                   color: Colors.black,
                 ),
               ),
-
               const SizedBox(height: 8),
-
-              // Email
               Text(
                 _email,
                 style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
-
               const SizedBox(height: 4),
-
-              // Location
               Text(
                 _alamat,
                 style: const TextStyle(fontSize: 14, color: Colors.grey),
@@ -83,15 +172,17 @@ class _SettingAccPageState extends State<SettingAccPage> {
               _buildMenuItem(
                 context,
                 icon: Icons.credit_card_outlined,
-                title: 'Tentang Pribadi',
+                title: l10n.personalInfo,
                 onTap: () async {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => TentangPribadiPage(
+                        userId: widget.userId,
                         initialNama: _namaLengkap,
                         initialEmail: _email,
                         initialAlamat: _alamat,
+                        initialProfileImage: _profileImage,
                       ),
                     ),
                   );
@@ -101,6 +192,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
                       result['nama'] as String,
                       result['email'] as String,
                       result['alamat'] as String,
+                      result['profileImage'] as String?,
                     );
                   }
                 },
@@ -109,7 +201,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
               _buildMenuItem(
                 context,
                 icon: Icons.language_outlined,
-                title: 'Bahasa',
+                title: l10n.language,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -121,7 +213,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
               _buildMenuItem(
                 context,
                 icon: Icons.history_outlined,
-                title: 'Riwayat',
+                title: l10n.history,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -135,7 +227,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
               _buildMenuItem(
                 context,
                 icon: Icons.help_outline,
-                title: 'Bantuan',
+                title: l10n.help,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -149,7 +241,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
               _buildMenuItem(
                 context,
                 icon: Icons.info_outline,
-                title: 'Tentang Kami',
+                title: l10n.aboutUs,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -196,9 +288,9 @@ class _SettingAccPageState extends State<SettingAccPage> {
                               size: 20,
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Keluar',
-                              style: TextStyle(
+                            Text(
+                              l10n.logout,
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFFD6D588),
@@ -257,6 +349,8 @@ class _SettingAccPageState extends State<SettingAccPage> {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -264,17 +358,17 @@ class _SettingAccPageState extends State<SettingAccPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            'Keluar',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          title: Text(
+            l10n.logout,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-          content: const Text('Apakah Anda yakin ingin keluar?'),
+          content: Text(l10n.logoutConfirm),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+              child: Text(l10n.cancel, style: const TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -291,9 +385,9 @@ class _SettingAccPageState extends State<SettingAccPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Keluar',
-                style: TextStyle(color: Colors.white),
+              child: Text(
+                l10n.logout,
+                style: const TextStyle(color: Colors.white),
               ),
             ),
           ],

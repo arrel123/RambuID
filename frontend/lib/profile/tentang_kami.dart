@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class TentangKamiPage extends StatelessWidget {
   const TentangKamiPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -29,10 +32,10 @@ class TentangKamiPage extends StatelessWidget {
                   ),
                   const SizedBox(width: 16),
                   // Title
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Tentang Kami',
-                      style: TextStyle(
+                      l10n.aboutUs,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
@@ -69,9 +72,9 @@ class TentangKamiPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Aplikasi Edukasi Rambu Lalu Lintas',
-                        style: TextStyle(
+                      Text(
+                        l10n.educationTitle,
+                        style: const TextStyle(
                           fontSize: 16,
                           color: Colors.grey,
                           fontFamily: 'Poppins',
@@ -91,32 +94,32 @@ class TentangKamiPage extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Tentang Aplikasi',
-                              style: TextStyle(
+                              l10n.aboutApp,
+                              style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF2C3E50),
                                 fontFamily: 'Poppins',
                               ),
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
-                              'RambuID adalah aplikasi edukasi rambu lalu lintas yang dirancang untuk membantu pengguna memahami berbagai jenis rambu lalu lintas dengan mudah dan interaktif.',
-                              style: TextStyle(
+                              l10n.aboutAppDesc,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.black87,
                                 fontFamily: 'Poppins',
                                 height: 1.6,
                               ),
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
-                              'Dengan fitur-fitur canggih seperti deteksi rambu menggunakan kamera, katalog rambu lengkap, edukasi interaktif, dan peta lokasi rambu, RambuID membantu meningkatkan kesadaran dan pemahaman tentang rambu lalu lintas di Indonesia.',
-                              style: TextStyle(
+                              l10n.aboutAppDesc2,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.black87,
                                 fontFamily: 'Poppins',
@@ -130,11 +133,11 @@ class TentangKamiPage extends StatelessWidget {
                       const SizedBox(height: 24),
 
                       // Features Section
-                      const Align(
+                      Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Fitur Utama',
-                          style: TextStyle(
+                          l10n.mainFeatures,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF2C3E50),
@@ -146,30 +149,26 @@ class TentangKamiPage extends StatelessWidget {
 
                       _buildFeatureItem(
                         icon: Icons.camera_alt_outlined,
-                        title: 'Deteksi Rambu',
-                        description:
-                            'Deteksi rambu lalu lintas secara real-time menggunakan kamera',
+                        title: l10n.featureDetection,
+                        description: l10n.featureDetectionDesc,
                         color: const Color(0xFF1E88E5),
                       ),
                       _buildFeatureItem(
                         icon: Icons.book_outlined,
-                        title: 'Katalog Rambu',
-                        description:
-                            'Koleksi lengkap berbagai jenis rambu lalu lintas',
+                        title: l10n.featureCatalog,
+                        description: l10n.featureCatalogDesc,
                         color: const Color(0xFF00897B),
                       ),
                       _buildFeatureItem(
                         icon: Icons.school_outlined,
-                        title: 'Edukasi Interaktif',
-                        description:
-                            'Pelajari rambu lalu lintas dengan cara yang menyenangkan',
+                        title: l10n.featureEducation,
+                        description: l10n.featureEducationDesc,
                         color: const Color(0xFFFFC107),
                       ),
                       _buildFeatureItem(
                         icon: Icons.map_outlined,
-                        title: 'Jelajahi Maps',
-                        description:
-                            'Temukan lokasi rambu lalu lintas di sekitar Anda',
+                        title: l10n.featureMaps,
+                        description: l10n.featureMapsDesc,
                         color: const Color(0xFFE53935),
                       ),
 
@@ -186,19 +185,19 @@ class TentangKamiPage extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
                             Text(
-                              'Versi Aplikasi',
-                              style: TextStyle(
+                              l10n.appVersion,
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF2C3E50),
                                 fontFamily: 'Poppins',
                               ),
                             ),
-                            SizedBox(height: 8),
-                            Text(
+                            const SizedBox(height: 8),
+                            const Text(
                               '1.0.0',
                               style: TextStyle(
                                 fontSize: 24,
@@ -207,10 +206,10 @@ class TentangKamiPage extends StatelessWidget {
                                 fontFamily: 'Poppins',
                               ),
                             ),
-                            SizedBox(height: 16),
+                            const SizedBox(height: 16),
                             Text(
-                              '© 2025 RambuID. All rights reserved.',
-                              style: TextStyle(
+                              l10n.allRightsReserved,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
                                 fontFamily: 'Poppins',

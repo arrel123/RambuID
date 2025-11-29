@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart'; // Pastikan path import ini benar
+import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 import 'detailrambu.dart';
 
 class EdukasiPage extends StatefulWidget {
@@ -15,27 +16,46 @@ class _EdukasiPageState extends State<EdukasiPage> {
   String selectedTab = 'Semua';
   String searchQuery = '';
   
-  // Variabel untuk menampung data dari Backend
   List<dynamic> _rambuList = [];
   bool _isLoading = true;
   String? _errorMessage;
 
-  final List<String> tabs = [
-    'Semua',
-    'Peringatan',
-    'Larangan',
-    'Petunjuk',
-    'Perintah'
+  List<String> get tabs => [
+    AppLocalizations.of(context).translate('category_all'),
+    AppLocalizations.of(context).translate('category_warning'),
+    AppLocalizations.of(context).translate('category_prohibition'),
+    AppLocalizations.of(context).translate('category_direction'),
+    AppLocalizations.of(context).translate('category_command'),
   ];
+
+  // Map kategori dari UI ke database
+  Map<String, String> get categoryMapping => {
+    AppLocalizations.of(context).translate('category_all'): 'Semua',
+    AppLocalizations.of(context).translate('category_warning'): 'Peringatan',
+    AppLocalizations.of(context).translate('category_prohibition'): 'Larangan',
+    AppLocalizations.of(context).translate('category_direction'): 'Petunjuk',
+    AppLocalizations.of(context).translate('category_command'): 'Perintah',
+  };
 
   @override
   void initState() {
     super.initState();
-    selectedTab = widget.initialCategory ?? 'Semua';
-    _fetchRambuData(); // Panggil fungsi ambil data saat halaman dibuka
+    // Delay initialization to ensure context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialCategory != null) {
+        // Find the display name for the initial category
+        final entry = categoryMapping.entries.firstWhere(
+          (e) => e.value == widget.initialCategory,
+          orElse: () => MapEntry(tabs.first, 'Semua'),
+        );
+        setState(() {
+          selectedTab = entry.key;
+        });
+      }
+      _fetchRambuData();
+    });
   }
 
-  // Fungsi mengambil data dari API Service
   Future<void> _fetchRambuData() async {
     try {
       final result = await ApiService.getRambuList();
@@ -61,30 +81,28 @@ class _EdukasiPageState extends State<EdukasiPage> {
     }
   }
 
-  // Fungsi menyusun URL gambar lengkap
   String _getImageUrl(String? partialUrl) {
     if (partialUrl == null || partialUrl.isEmpty) return '';
-    // Jika backend mengembalikan path relatif (misal: /static/...), gabungkan dengan Base URL
     if (partialUrl.startsWith('/')) {
       return '${ApiService.baseUrl}$partialUrl';
     }
-    // Jika sudah full URL (http...), biarkan saja
     return partialUrl;
   }
 
   List<dynamic> getFilteredData() {
     List<dynamic> filtered = _rambuList;
 
-    // Filter Kategori (Case Insensitive karena backend pakai huruf kecil)
-    if (selectedTab != 'Semua') {
+    // Get database category name from selected tab
+    final dbCategory = categoryMapping[selectedTab] ?? 'Semua';
+
+    if (dbCategory != 'Semua') {
       filtered = filtered.where((item) {
         final kategoriBackend = (item['kategori'] ?? '').toString().toLowerCase();
-        final kategoriTab = selectedTab.toLowerCase();
-        return kategoriBackend == kategoriTab;
+        final kategoriFilter = dbCategory.toLowerCase();
+        return kategoriBackend == kategoriFilter;
       }).toList();
     }
 
-    // Filter Search (Berdasarkan 'nama')
     if (searchQuery.isNotEmpty) {
       filtered = filtered.where((item) {
         final nama = (item['nama'] ?? '').toString().toLowerCase();
@@ -106,15 +124,17 @@ class _EdukasiPageState extends State<EdukasiPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFFD6D588),
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'Daftar Rambu',
-          style: TextStyle(
+        title: Text(
+          l10n.translate('sign_list'),
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -124,7 +144,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
       ),
       body: Column(
         children: [
-          // 🔹 Tab Bar
+          // Tab Bar
           Container(
             color: Colors.white,
             child: SingleChildScrollView(
@@ -166,7 +186,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
             ),
           ),
 
-          // 🔹 Search Bar
+          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -176,7 +196,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Cari Nama Rambu',
+                hintText: l10n.translate('search_sign_name'),
                 hintStyle: const TextStyle(color: Colors.black),
                 prefixIcon: const Icon(Icons.search, color: Colors.black),
                 filled: true,
@@ -189,14 +209,18 @@ class _EdukasiPageState extends State<EdukasiPage> {
             ),
           ),
 
-          // 🔹 Content (Loading / Error / Grid)
+          // Content
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFFD6D588)))
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFD6D588),
+                    ),
+                  )
                 : _errorMessage != null
                     ? Center(child: Text(_errorMessage!))
                     : getFilteredData().isEmpty
-                        ? const Center(child: Text("Data tidak ditemukan"))
+                        ? Center(child: Text(l10n.translate('data_not_found')))
                         : GridView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

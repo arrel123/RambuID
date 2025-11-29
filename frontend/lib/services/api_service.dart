@@ -77,15 +77,27 @@ class ApiService {
 
   static Future<Map<String, dynamic>> register(
     String username,
-    String password,
-  ) async {
+    String password, {
+    String? namaLengkap,
+  }) async {
     try {
       final url = '$baseUrl/register';
+      
+      final body = {
+        'username': username,
+        'password': password,
+      };
+      
+      // Tambahkan nama_lengkap jika ada
+      if (namaLengkap != null && namaLengkap.isNotEmpty) {
+        body['nama_lengkap'] = namaLengkap;
+      }
+      
       final response = await http
           .post(
             Uri.parse(url),
             headers: headers,
-            body: jsonEncode({'username': username, 'password': password}),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -104,7 +116,207 @@ class ApiService {
   }
 
   // ===========================================================================
-  // ADMIN FEATURES (Dashboard & Users) -> INI YANG SEBELUMNYA HILANG
+  // USER PROFILE ENDPOINTS
+  // ===========================================================================
+
+  /// Get user profile by user ID
+  static Future<Map<String, dynamic>> getUserProfile(int userId) async {
+    try {
+      final url = '$baseUrl/users/$userId/profile';
+      print('🔵 Get Profile: $url');
+
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final Map<String, dynamic> profile = jsonDecode(response.body);
+        return {'success': true, 'data': profile};
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['detail'] ?? 'Gagal mengambil profil',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi gagal: $e'};
+    }
+  }
+
+  /// Update user profile (Universal - Mobile & Web)
+  static Future<Map<String, dynamic>> updateUserProfile({
+    required int userId,
+    String? namaLengkap,
+    String? username,
+    String? alamat,
+    String? password,
+    XFile? profileImage,
+  }) async {
+    if (kIsWeb) {
+      Uint8List? imageBytes;
+      String? fileName;
+      
+      if (profileImage != null) {
+        imageBytes = await profileImage.readAsBytes();
+        fileName = profileImage.name;
+      }
+      
+      return await _updateUserProfileWeb(
+        userId: userId,
+        namaLengkap: namaLengkap,
+        username: username,
+        alamat: alamat,
+        password: password,
+        imageBytes: imageBytes,
+        fileName: fileName,
+      );
+    } else {
+      return await _updateUserProfileMobile(
+        userId: userId,
+        namaLengkap: namaLengkap,
+        username: username,
+        alamat: alamat,
+        password: password,
+        profileImage: profileImage,
+      );
+    }
+  }
+
+  /// Delete user profile image
+  static Future<Map<String, dynamic>> deleteProfileImage(int userId) async {
+    try {
+      final url = '$baseUrl/users/$userId/profile-image';
+      final response = await http
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {
+          'success': true,
+          'data': jsonDecode(response.body),
+          'message': 'Foto profil berhasil dihapus',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['detail'] ?? 'Gagal menghapus foto profil',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Koneksi gagal: $e'};
+    }
+  }
+
+  // ===========================================================================
+  // PRIVATE HELPERS FOR PROFILE UPDATE
+  // ===========================================================================
+
+  /// Mobile Profile Update
+  static Future<Map<String, dynamic>> _updateUserProfileMobile({
+    required int userId,
+    String? namaLengkap,
+    String? username,
+    String? alamat,
+    String? password,
+    XFile? profileImage,
+  }) async {
+    try {
+      final url = '$baseUrl/users/$userId/profile';
+      final request = http.MultipartRequest('PUT', Uri.parse(url));
+
+      if (namaLengkap != null) request.fields['nama_lengkap'] = namaLengkap;
+      if (username != null) request.fields['username'] = username;
+      if (alamat != null) request.fields['alamat'] = alamat;
+      if (password != null && password.isNotEmpty) {
+        request.fields['password'] = password;
+      }
+
+      if (profileImage != null) {
+        final bytes = await profileImage.readAsBytes();
+        request.files.add(http.MultipartFile.fromBytes(
+          'profile_image',
+          bytes,
+          filename: profileImage.name,
+        ));
+      }
+
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 20));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {
+          'success': true,
+          'data': jsonDecode(response.body),
+          'message': 'Profil berhasil diperbarui'
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['detail'] ?? 'Gagal memperbarui profil'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  /// Web Profile Update
+  static Future<Map<String, dynamic>> _updateUserProfileWeb({
+    required int userId,
+    String? namaLengkap,
+    String? username,
+    String? alamat,
+    String? password,
+    Uint8List? imageBytes,
+    String? fileName,
+  }) async {
+    try {
+      final url = '$baseUrl/users/$userId/profile';
+      var request = http.MultipartRequest('PUT', Uri.parse(url));
+
+      if (namaLengkap != null) request.fields['nama_lengkap'] = namaLengkap;
+      if (username != null) request.fields['username'] = username;
+      if (alamat != null) request.fields['alamat'] = alamat;
+      if (password != null && password.isNotEmpty) {
+        request.fields['password'] = password;
+      }
+
+      if (imageBytes != null && fileName != null) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'profile_image',
+          imageBytes,
+          filename: fileName,
+        ));
+      }
+
+      var streamedResponse =
+          await request.send().timeout(const Duration(seconds: 20));
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {
+          'success': true,
+          'data': jsonDecode(response.body),
+          'message': 'Profil berhasil diperbarui'
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['detail'] ?? 'Gagal memperbarui profil'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+
+  // ===========================================================================
+  // ADMIN FEATURES (Dashboard & Users)
   // ===========================================================================
 
   static Future<Map<String, dynamic>> getAllUsers() async {
@@ -235,7 +447,7 @@ class ApiService {
     }
   }
 
-  // --- UPDATE (Universal) -> INI YANG SEBELUMNYA HILANG ---
+  // --- UPDATE (Universal) ---
   static Future<Map<String, dynamic>> updateRambu({
     required int id,
     required String nama,
@@ -274,7 +486,7 @@ class ApiService {
   }
 
   // ===========================================================================
-  // PRIVATE HELPERS (Mobile vs Web Implementation)
+  // PRIVATE HELPERS (Mobile vs Web Implementation for Rambu)
   // ===========================================================================
 
   // Mobile Create

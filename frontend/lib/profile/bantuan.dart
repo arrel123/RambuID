@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n/app_localizations.dart';
 
 class BantuanPage extends StatelessWidget {
   const BantuanPage({super.key});
 
   Future<void> _kirimEmail(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final Uri emailUri = Uri(
       scheme: 'mailto',
-      path: 'rambuid.support@gmail.com',
+      path: 'rambuid09@gmail.com',
       query:
           'subject=Bantuan RambuID&body=Halo Tim RambuID,%0D%0A%0D%0ASaya membutuhkan bantuan mengenai:',
     );
@@ -15,15 +17,12 @@ class BantuanPage extends StatelessWidget {
     try {
       await launchUrl(emailUri, mode: LaunchMode.externalApplication);
     } catch (e) {
-      // Fallback: tampilkan snackbar jika gagal
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Tidak dapat membuka aplikasi email. Silakan kirim email ke: rambuid.support@gmail.com',
-            ),
+          SnackBar(
+            content: Text(l10n.emailError),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -33,6 +32,8 @@ class BantuanPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -44,7 +45,6 @@ class BantuanPage extends StatelessWidget {
               decoration: const BoxDecoration(color: Color(0xFFD6D588)),
               child: Row(
                 children: [
-                  // Back Button
                   IconButton(
                     onPressed: () {
                       Navigator.pop(context);
@@ -56,11 +56,10 @@ class BantuanPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Title
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Bantuan',
-                      style: TextStyle(
+                      l10n.help,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
@@ -90,9 +89,9 @@ class BantuanPage extends StatelessWidget {
                               width: 100,
                             ),
                             const SizedBox(height: 16),
-                            const Text(
-                              'Butuh Bantuan?',
-                              style: TextStyle(
+                            Text(
+                              l10n.needHelp,
+                              style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF2C3E50),
@@ -100,9 +99,9 @@ class BantuanPage extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const Text(
-                              'Kami siap membantu Anda',
-                              style: TextStyle(
+                            Text(
+                              l10n.weReadyToHelp,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey,
                                 fontFamily: 'Poppins',
@@ -128,17 +127,17 @@ class BantuanPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.email_outlined,
                                   color: Color(0xFFD6D588),
                                   size: 24,
                                 ),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Text(
-                                  'Hubungi Kami',
-                                  style: TextStyle(
+                                  l10n.contactUs,
+                                  style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF2C3E50),
@@ -148,9 +147,9 @@ class BantuanPage extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 16),
-                            const Text(
-                              'Kirimkan pertanyaan atau keluhan Anda melalui email. Tim support kami akan merespons secepat mungkin.',
-                              style: TextStyle(
+                            Text(
+                              l10n.sendQuestion,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.black87,
                                 fontFamily: 'Poppins',
@@ -166,9 +165,9 @@ class BantuanPage extends StatelessWidget {
                                   Icons.email,
                                   color: Colors.white,
                                 ),
-                                label: const Text(
-                                  'Kirim Email',
-                                  style: TextStyle(
+                                label: Text(
+                                  l10n.sendEmail,
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'Poppins',
@@ -190,7 +189,7 @@ class BantuanPage extends StatelessWidget {
                             const SizedBox(height: 12),
                             const Center(
                               child: Text(
-                                'rambuid.support@gmail.com',
+                                'rambuid09@gmail.com',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF8B9C4A),
@@ -206,9 +205,9 @@ class BantuanPage extends StatelessWidget {
                       const SizedBox(height: 32),
 
                       // FAQ Section
-                      const Text(
-                        'Pertanyaan Umum',
-                        style: TextStyle(
+                      Text(
+                        l10n.faq,
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2C3E50),
@@ -218,26 +217,20 @@ class BantuanPage extends StatelessWidget {
                       const SizedBox(height: 16),
 
                       _buildFAQItem(
-                        question:
-                            'Bagaimana cara menggunakan fitur deteksi rambu?',
-                        answer:
-                            'Buka menu Deteksi, lalu arahkan kamera ke rambu lalu lintas. Aplikasi akan secara otomatis mendeteksi dan memberikan informasi tentang rambu tersebut.',
+                        question: l10n.faq1Q,
+                        answer: l10n.faq1A,
                       ),
                       _buildFAQItem(
-                        question: 'Bagaimana cara melihat katalog rambu?',
-                        answer:
-                            'Di halaman beranda, Anda dapat melihat berbagai kategori rambu lalu lintas seperti Larangan, Peringatan, Perintah, dan Petunjuk.',
+                        question: l10n.faq2Q,
+                        answer: l10n.faq2A,
                       ),
                       _buildFAQItem(
-                        question:
-                            'Apakah aplikasi ini memerlukan koneksi internet?',
-                        answer:
-                            'Beberapa fitur seperti deteksi rambu dan edukasi dapat digunakan offline. Namun, untuk fitur jelajahi maps memerlukan koneksi internet.',
+                        question: l10n.faq3Q,
+                        answer: l10n.faq3A,
                       ),
                       _buildFAQItem(
-                        question: 'Bagaimana cara mengubah bahasa?',
-                        answer:
-                            'Buka menu Pengaturan > Bahasa, lalu pilih bahasa yang diinginkan.',
+                        question: l10n.faq4Q,
+                        answer: l10n.faq4A,
                       ),
 
                       const SizedBox(height: 32),

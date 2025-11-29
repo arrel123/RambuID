@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 class RiwayatItem {
   final String icon;
@@ -70,27 +71,29 @@ class _RiwayatPageState extends State<RiwayatPage> {
   ];
 
   void _deleteItem(String id) {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _historyItems.removeWhere((item) => item.id == id);
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Riwayat berhasil dihapus'),
+      SnackBar(
+        content: Text(l10n.historyDeleted),
         backgroundColor: Colors.green,
       ),
     );
   }
 
   void _showDeleteConfirmation(String id, String title) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus Riwayat'),
-        content: Text('Apakah Anda yakin ingin menghapus "$title"?'),
+        title: Text(l10n.deleteHistory),
+        content: Text('${l10n.deleteConfirm} "$title"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -101,7 +104,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Hapus'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -109,15 +112,16 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   void _showDeleteAllConfirmation() {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus Semua Riwayat'),
-        content: const Text('Apakah Anda yakin ingin menghapus semua riwayat?'),
+        title: Text(l10n.deleteAllHistory),
+        content: Text(l10n.deleteAllConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+            child: Text(l10n.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -126,8 +130,8 @@ class _RiwayatPageState extends State<RiwayatPage> {
                 _historyItems.clear();
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Semua riwayat berhasil dihapus'),
+                SnackBar(
+                  content: Text(l10n.allHistoryDeleted),
                   backgroundColor: Colors.green,
                 ),
               );
@@ -136,7 +140,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Hapus Semua'),
+            child: Text(l10n.deleteAll),
           ),
         ],
       ),
@@ -145,6 +149,8 @@ class _RiwayatPageState extends State<RiwayatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
     // Group items by month and date
     Map<String, List<RiwayatItem>> groupedItems = {};
     for (var item in _historyItems) {
@@ -179,10 +185,10 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   ),
                   const SizedBox(width: 16),
                   // Title
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Riwayat',
-                      style: TextStyle(
+                      l10n.history,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
@@ -217,7 +223,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Tidak ada riwayat',
+                            l10n.noHistory,
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
