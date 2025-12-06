@@ -1,115 +1,253 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
-import 'package:flutter/services.dart';
-import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class DbService {
-  static Future<List<Map<String, dynamic>>> getJelajahiWithRambu() async {
-    print('🗂️  MENGAMBIL DATA RAMBU...');
-    
-    // Data HARCODED dari yang Anda berikan - PASTI BERHASIL
-    List<Map<String, dynamic>> fixedData = [
-      {
-        'nama': 'Dilarang Parkir',
-        'latitude': 1.1194178,
-        'longitude': 104.0485686,
-        'kategori': 'Larangan',
-      },
-      {
-        'nama': '3 Panah Melingkar',
-        'latitude': 1.1193241,
-        'longitude': 104.0485688,
-        'kategori': 'Petunjuk',
-      },
-      {
-        'nama': 'Dilarang Belok Kanan',
-        'latitude': 1.1193241,
-        'longitude': 104.0485688,
-        'kategori': 'Larangan',
-      },
-      {
-        'nama': 'Rambu Keluar',
-        'latitude': 1.1189841,
-        'longitude': 104.0483701,
-        'kategori': 'Petunjuk',
-      },
-      {
-        'nama': 'Dilarang Parkir dan Merokok',
-        'latitude': 1.1187723,
-        'longitude': 104.0484794,
-        'kategori': 'Larangan',
-      },
-      {
-        'nama': 'Lajur Wajib Kanan',
-        'latitude': 1.1189314,
-        'longitude': 104.0491652,
-        'kategori': 'Perintah',
-      },
-      {
-        'nama': 'Parkir Mobil',
-        'latitude': 1.1189314,
-        'longitude': 104.0491652,
-        'kategori': 'Petunjuk',
-      },
-      {
-        'nama': 'Wajib Lurus',
-        'latitude': 1.1189274,
-        'longitude': 104.0494293,
-        'kategori': 'Perintah',
-      },
-      {
-        'nama': 'Wajib Kanan',
-        'latitude': 1.1189274,
-        'longitude': 104.0494293,
-        'kategori': 'Perintah',
-      },
-      {
-        'nama': 'Dilarang Masuk',
-        'latitude': 1.1190402,
-        'longitude': 104.0498061,
-        'kategori': 'Larangan',
-      },
-      {
-        'nama': 'Dilarang Masuk 2',
-        'latitude': 1.1193521,
-        'longitude': 104.0498033,
-        'kategori': 'Larangan',
-      },
-      {
-        'nama': 'Wajib Lurus 2',
-        'latitude': 1.1193314,
-        'longitude': 104.0497178,
-        'kategori': 'Perintah',
-      },
-    ];
+  // GANTI DENGAN IP KOMPUTER ANDA
+  // Untuk Android Emulator: http://10.0.2.2:8000
+  // Untuk Device Fisik di jaringan yang sama: http://192.168.x.x:8000
+  static const String baseUrl = 'http://192.168.100.140:8000'; // GANTI IP INI!
 
-    print('📍 DATA FIXED: ${fixedData.length} rambu');
-    
-    // Tetap coba ambil dari database, jika gagal pakai fixed data
+  // === TEST CONNECTION ===
+  static Future<bool> testConnection() async {
     try {
-      var databasesPath = await getDatabasesPath();
-      String path = join(databasesPath, "rambuid.db");
-      
-      if (await databaseExists(path)) {
-        Database db = await openDatabase(path);
-        
-        var result = await db.rawQuery("""
-          SELECT j.latitude, j.longitude, r.nama, r.deskripsi, r.kategori
-          FROM jelajahi j JOIN rambu r ON j.rambu_id = r.id
-        """);
-        
-        await db.close();
-        
-        if (result.isNotEmpty) {
-          print('✅ DATA DATABASE: ${result.length} records');
-          return result;
-        }
+      final response = await http.get(Uri.parse('$baseUrl/health'));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Test connection failed: $e');
+      return false;
+    }
+  }
+
+  // === AUTH ENDPOINTS (Jika dibutuhkan) ===
+  static Future<Map<String, dynamic>> login({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['detail'] ?? 'Login gagal');
       }
     } catch (e) {
-      print('❌ ERROR DATABASE: $e');
+      throw Exception('Error: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> register({
+    required String username,
+    required String password,
+    String? namaLengkap,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': username,
+          'password': password,
+          'nama_lengkap': namaLengkap,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['detail'] ?? 'Registrasi gagal');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  // === JELAJAHI ENDPOINTS ===
+  static Future<List<Map<String, dynamic>>> getJelajahiWithRambu() async {
+    try {
+      print('🌐 Requesting: $baseUrl/jelajahi/');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/jelajahi/'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print('📡 Response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        print('✅ Data berhasil di-parse: ${data.length} items');
+        
+        // Debug: print data pertama untuk melihat strukturnya
+        if (data.isNotEmpty) {
+          print('📝 Data contoh: ${data[0]}');
+        }
+        
+        return data.map((item) {
+          return {
+            'id': item['id'],
+            'rambu_id': item['rambu_id'],
+            'latitude': item['latitude'],
+            'longitude': item['longitude'],
+            'nama': item['nama'] ?? '',
+            'gambar_url': item['gambar_url'] ?? '',
+            'deskripsi': item['deskripsi'] ?? '',
+            'kategori': item['kategori'] ?? 'lainnya',
+          };
+        }).toList();
+      } else {
+        print('❌ Error response: ${response.body}');
+        throw Exception('Gagal mengambil data jelajahi: ${response.statusCode}');
+      }
+    } on http.ClientException catch (e) {
+      print('🌐 Network error: $e');
+      throw Exception('Tidak dapat terhubung ke server. Periksa koneksi internet dan IP address.');
+    } on FormatException catch (e) {
+      print('📄 Format error: $e');
+      throw Exception('Response tidak valid dari server');
+    } catch (e) {
+      print('💥 Exception: $e');
+      throw Exception('Error koneksi: $e');
+    }
+  }
+
+  // Fungsi tambah lokasi rambu
+  static Future<Map<String, dynamic>> addJelajahiLocation({
+    required int rambuId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/jelajahi/'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'rambu_id': rambuId,
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['detail'] ?? 'Gagal menambahkan lokasi');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  // Fungsi hapus lokasi
+  static Future<bool> deleteJelajahiLocation(int jelajahiId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/jelajahi/$jelajahiId'),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  // Fungsi ambil semua rambu
+  static Future<List<Map<String, dynamic>>> getAllRambu() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/rambu/'),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Gagal mengambil data rambu');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  // Fungsi ambil detail jelajahi by ID
+  static Future<Map<String, dynamic>> getJelajahiById(int jelajahiId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/jelajahi/$jelajahiId'),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Data tidak ditemukan');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  // Fungsi update jelajahi
+  static Future<Map<String, dynamic>> updateJelajahiLocation({
+    required int jelajahiId,
+    required int rambuId,
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/jelajahi/$jelajahiId'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'rambu_id': rambuId,
+          'latitude': latitude.toString(),
+          'longitude': longitude.toString(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['detail'] ?? 'Gagal update lokasi');
+      }
+    } catch (e) {
+      throw Exception('Error: $e');
+    }
+  }
+
+  // === HELPER METHOD ===
+  static String getFullImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return '';
     }
     
-    print('🔄 Menggunakan data fixed');
-    return fixedData;
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Pastikan path dimulai dengan /
+    if (!imagePath.startsWith('/')) {
+      imagePath = '/$imagePath';
+    }
+    
+    return '$baseUrl$imagePath';
+  }
+
+  // Fungsi untuk debugging
+  static void printNetworkInfo() {
+    print('🔗 Network Configuration:');
+    print('   Base URL: $baseUrl');
+    print('   Test URL: $baseUrl/health');
+    print('   Jelajahi URL: $baseUrl/jelajahi/');
   }
 }

@@ -8,10 +8,10 @@ from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
-from sqlalchemy import Column, Integer, String, Text, create_engine
+from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker, relationship
 
 # --- KONFIGURASI PATH UNTUK GAMBAR ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,6 +63,15 @@ class User(Base):
     nama_lengkap = Column(String, nullable=True)
     profile_image = Column(String, nullable=True)
 
+class Jelajahi(Base):
+    __tablename__ = "jelajahi"
+    id = Column(Integer, primary_key=True, index=True)
+    rambu_id = Column(Integer, ForeignKey("rambu.id"), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    
+    rambu = relationship("Rambu")
+
 # --- SCHEMA DATA ---
 class RambuCreate(BaseModel):
     nama: str
@@ -109,10 +118,37 @@ class UpdateProfileRequest(BaseModel):
     alamat: Optional[str] = None
     password: Optional[str] = None
 
+class JelajahiCreate(BaseModel):
+    rambu_id: int
+    latitude: float
+    longitude: float
+
+class JelajahiResponse(BaseModel):
+    id: int
+    rambu_id: int
+    latitude: float
+    longitude: float
+    
+    class Config:
+        from_attributes = True
+
+class JelajahiWithRambuResponse(BaseModel):
+    id: int
+    rambu_id: int
+    latitude: float
+    longitude: float
+    nama: str
+    gambar_url: Optional[str]
+    deskripsi: Optional[str]
+    kategori: str
+    
+    class Config:
+        from_attributes = True
+
 # --- SETUP APLIKASI ---
 app = FastAPI(title="RambuID API", version="1.0.0")
 
-# Mount static files directory (gunakan path absolut agar aman)
+# Mount static files directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.add_middleware(
@@ -122,6 +158,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Buat semua tabel
 Base.metadata.create_all(bind=engine)
 
 # --- FUNGSI BANTU ---
@@ -144,21 +181,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def save_uploaded_file(file: UploadFile, destination_dir: str, prefix: str = "") -> str:
     """Menyimpan file upload dan mengembalikan path relatif"""
-    # Generate unique filename
     file_extension = os.path.splitext(file.filename)[1]
     unique_filename = f"{prefix}{uuid.uuid4()}{file_extension}"
-    
-    # Destination path
     file_path = os.path.join(destination_dir, unique_filename)
     
-    # Save file
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Return relative path untuk URL (dengan leading slash)
     folder_name = os.path.basename(destination_dir)
-    relative_path = f"/static/images/{folder_name}/{unique_filename}"
-    return relative_path
+    return f"/static/images/{folder_name}/{unique_filename}"
 
 # --- API ENDPOINTS ---
 
@@ -182,7 +213,7 @@ def register_user(user: UserSchema, db: Session = Depends(get_db)):
         new_user = User(
             username=user.username, 
             password_hash=hashed_password,
-            nama_lengkap=user.nama_lengkap  # Tambahkan nama lengkap
+            nama_lengkap=user.nama_lengkap
         )
         db.add(new_user)
         db.flush()
@@ -215,13 +246,11 @@ def login_user(user: UserSchema, db: Session = Depends(get_db)):
 # === USER PROFILE ENDPOINTS ===
 @app.get("/users/{user_id}/profile", response_model=UserProfileResponse)
 def get_user_profile(user_id: int, db: Session = Depends(get_db)):
-    """Mendapatkan profil user berdasarkan ID"""
     user = db.query(User).filter(User.id == user_id).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="User tidak ditemukan")
     
-    # Pastikan path profile image dimulai dengan /
     if user.profile_image and not user.profile_image.startswith('http'):
         if not user.profile_image.startswith('/'):
             user.profile_image = f"/{user.profile_image}"
@@ -238,37 +267,30 @@ def update_user_profile(
     profile_image: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """Update profil user (dengan atau tanpa foto profil baru)"""
     try:
         user = db.query(User).filter(User.id == user_id).first()
         
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
         
-        # Update nama lengkap jika provided
         if nama_lengkap is not None:
             user.nama_lengkap = nama_lengkap
         
-        # Update username jika provided dan belum digunakan
         if username is not None and username != user.username:
             existing_user = db.query(User).filter(User.username == username).first()
             if existing_user:
                 raise HTTPException(status_code=400, detail="Username sudah digunakan")
             user.username = username
         
-        # Update alamat jika provided
         if alamat is not None:
             user.alamat = alamat
         
-        # Update password jika provided
         if password is not None and password.strip():
             if len(password) < 6:
                 raise HTTPException(status_code=400, detail="Password minimal 6 karakter")
             user.password_hash = hash_password(password)
         
-        # Handle profile image baru jika diupload
         if profile_image:
-            # Validasi file type
             allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
             file_extension = os.path.splitext(profile_image.filename)[1].lower()
             
@@ -278,7 +300,6 @@ def update_user_profile(
                     detail="Format file tidak didukung. Gunakan JPG, PNG, atau GIF"
                 )
             
-            # Hapus foto profil lama jika ada
             if user.profile_image:
                 old_image_path = os.path.join(BASE_DIR, user.profile_image.lstrip('/'))
                 if os.path.exists(old_image_path):
@@ -287,14 +308,12 @@ def update_user_profile(
                     except:
                         pass
             
-            # Save foto profil baru
             image_path = save_uploaded_file(profile_image, PROFILE_IMAGES_DIR, prefix="profile_")
             user.profile_image = image_path
         
         db.flush()
         db.refresh(user)
         
-        # Pastikan path dimulai dengan /
         if user.profile_image and not user.profile_image.startswith('http'):
             if not user.profile_image.startswith('/'):
                 user.profile_image = f"/{user.profile_image}"
@@ -309,7 +328,6 @@ def update_user_profile(
 
 @app.delete("/users/{user_id}/profile-image")
 def delete_profile_image(user_id: int, db: Session = Depends(get_db)):
-    """Hapus foto profil user"""
     try:
         user = db.query(User).filter(User.id == user_id).first()
         
@@ -319,12 +337,10 @@ def delete_profile_image(user_id: int, db: Session = Depends(get_db)):
         if not user.profile_image:
             raise HTTPException(status_code=400, detail="User tidak memiliki foto profil")
         
-        # Hapus file foto profil
         image_path = os.path.join(BASE_DIR, user.profile_image.lstrip('/'))
         if os.path.exists(image_path):
             os.remove(image_path)
         
-        # Set profile_image ke None
         user.profile_image = None
         db.flush()
         
@@ -339,13 +355,10 @@ def delete_profile_image(user_id: int, db: Session = Depends(get_db)):
 # === CRUD RAMBU DENGAN GAMBAR ===
 @app.get("/rambu/", response_model=List[RambuResponse])
 def get_all_rambu(db: Session = Depends(get_db)):
-    """Mendapatkan semua data rambu"""
     rambu_list = db.query(Rambu).all()
     
-    # Pastikan path dimulai dengan /static
     for rambu in rambu_list:
         if rambu.gambar_url and not rambu.gambar_url.startswith('http'):
-            # Pastikan path dimulai dengan /
             if not rambu.gambar_url.startswith('/'):
                 rambu.gambar_url = f"/{rambu.gambar_url}"
     
@@ -359,9 +372,7 @@ def create_rambu(
     gambar: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """Membuat data rambu baru dengan gambar"""
     try:
-        # Validasi kategori
         valid_kategori = ['larangan', 'peringatan', 'petunjuk', 'perintah']
         if kategori not in valid_kategori:
             raise HTTPException(
@@ -369,7 +380,6 @@ def create_rambu(
                 detail=f"Kategori tidak valid. Pilih salah satu: {', '.join(valid_kategori)}"
             )
         
-        # Validasi file type
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
         file_extension = os.path.splitext(gambar.filename)[1].lower()
         
@@ -379,10 +389,8 @@ def create_rambu(
                 detail="Format file tidak didukung. Gunakan JPG, PNG, atau GIF"
             )
         
-        # Save gambar
         gambar_path = save_uploaded_file(gambar, RAMBU_IMAGES_DIR)
         
-        # Create rambu record
         new_rambu = Rambu(
             nama=nama,
             deskripsi=deskripsi,
@@ -394,7 +402,6 @@ def create_rambu(
         db.flush()
         db.refresh(new_rambu)
         
-        # Pastikan path dimulai dengan /
         if new_rambu.gambar_url and not new_rambu.gambar_url.startswith('/'):
             new_rambu.gambar_url = f"/{new_rambu.gambar_url}"
         
@@ -415,19 +422,16 @@ def update_rambu(
     gambar: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """Update data rambu (dengan atau tanpa gambar baru)"""
     try:
         rambu = db.query(Rambu).filter(Rambu.id == rambu_id).first()
         if not rambu:
             raise HTTPException(status_code=404, detail="Rambu tidak ditemukan")
         
-        # Update fields jika provided
         if nama is not None:
             rambu.nama = nama
         if deskripsi is not None:
             rambu.deskripsi = deskripsi
         if kategori is not None:
-            # Validasi kategori
             valid_kategori = ['larangan', 'peringatan', 'petunjuk', 'perintah']
             if kategori not in valid_kategori:
                 raise HTTPException(
@@ -436,9 +440,7 @@ def update_rambu(
                 )
             rambu.kategori = kategori
         
-        # Handle gambar baru jika diupload
         if gambar:
-            # Validasi file type
             allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
             file_extension = os.path.splitext(gambar.filename)[1].lower()
             
@@ -448,20 +450,17 @@ def update_rambu(
                     detail="Format file tidak didukung"
                 )
             
-            # Hapus gambar lama jika ada
             if rambu.gambar_url:
                 old_image_path = os.path.join(BASE_DIR, rambu.gambar_url.lstrip('/'))
                 if os.path.exists(old_image_path):
                     os.remove(old_image_path)
             
-            # Save gambar baru
             gambar_path = save_uploaded_file(gambar, RAMBU_IMAGES_DIR)
             rambu.gambar_url = gambar_path
         
         db.flush()
         db.refresh(rambu)
         
-        # Pastikan path dimulai dengan /
         if rambu.gambar_url and not rambu.gambar_url.startswith('http'):
             if not rambu.gambar_url.startswith('/'):
                 rambu.gambar_url = f"/{rambu.gambar_url}"
@@ -476,19 +475,16 @@ def update_rambu(
 
 @app.delete("/rambu/{rambu_id}")
 def delete_rambu(rambu_id: int, db: Session = Depends(get_db)):
-    """Hapus data rambu dan gambarnya"""
     try:
         rambu = db.query(Rambu).filter(Rambu.id == rambu_id).first()
         if not rambu:
             raise HTTPException(status_code=404, detail="Rambu tidak ditemukan")
         
-        # Hapus file gambar jika ada
         if rambu.gambar_url:
             image_path = os.path.join(BASE_DIR, rambu.gambar_url.lstrip('/'))
             if os.path.exists(image_path):
                 os.remove(image_path)
         
-        # Hapus dari database
         db.delete(rambu)
         db.flush()
         
@@ -499,6 +495,163 @@ def delete_rambu(rambu_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error hapus rambu: {str(e)}")
+
+# === JELAJAHI ENDPOINTS ===
+@app.get("/jelajahi/", response_model=List[JelajahiWithRambuResponse])
+def get_all_jelajahi_with_rambu(db: Session = Depends(get_db)):
+    """Mendapatkan semua data jelajahi dengan informasi rambu"""
+    try:
+        results = db.query(
+            Jelajahi.id,
+            Jelajahi.rambu_id,
+            Jelajahi.latitude,
+            Jelajahi.longitude,
+            Rambu.nama,
+            Rambu.gambar_url,
+            Rambu.deskripsi,
+            Rambu.kategori
+        ).join(
+            Rambu, Jelajahi.rambu_id == Rambu.id
+        ).all()
+        
+        data = []
+        for r in results:
+            gambar_url = r.gambar_url
+            if gambar_url and not gambar_url.startswith('http'):
+                if not gambar_url.startswith('/'):
+                    gambar_url = f"/{gambar_url}"
+            
+            data.append({
+                "id": r.id,
+                "rambu_id": r.rambu_id,
+                "latitude": float(r.latitude),
+                "longitude": float(r.longitude),
+                "nama": r.nama,
+                "gambar_url": gambar_url,
+                "deskripsi": r.deskripsi,
+                "kategori": r.kategori
+            })
+        
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.post("/jelajahi/", response_model=JelajahiResponse, status_code=201)
+def create_jelajahi(jelajahi: JelajahiCreate, db: Session = Depends(get_db)):
+    try:
+        rambu = db.query(Rambu).filter(Rambu.id == jelajahi.rambu_id).first()
+        if not rambu:
+            raise HTTPException(status_code=404, detail="Rambu tidak ditemukan")
+        
+        if not (-90 <= jelajahi.latitude <= 90) or not (-180 <= jelajahi.longitude <= 180):
+            raise HTTPException(status_code=400, detail="Latitude/Longitude tidak valid")
+        
+        new_jelajahi = Jelajahi(
+            rambu_id=jelajahi.rambu_id,
+            latitude=jelajahi.latitude,
+            longitude=jelajahi.longitude
+        )
+        
+        db.add(new_jelajahi)
+        db.flush()
+        db.refresh(new_jelajahi)
+        
+        return new_jelajahi
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.put("/jelajahi/{jelajahi_id}", response_model=JelajahiResponse)
+def update_jelajahi(
+    jelajahi_id: int,
+    jelajahi_data: JelajahiCreate,
+    db: Session = Depends(get_db)
+):
+    try:
+        jelajahi = db.query(Jelajahi).filter(Jelajahi.id == jelajahi_id).first()
+        if not jelajahi:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+        
+        rambu = db.query(Rambu).filter(Rambu.id == jelajahi_data.rambu_id).first()
+        if not rambu:
+            raise HTTPException(status_code=404, detail="Rambu tidak ditemukan")
+        
+        if not (-90 <= jelajahi_data.latitude <= 90) or not (-180 <= jelajahi_data.longitude <= 180):
+            raise HTTPException(status_code=400, detail="Latitude/Longitude tidak valid")
+        
+        jelajahi.rambu_id = jelajahi_data.rambu_id
+        jelajahi.latitude = jelajahi_data.latitude
+        jelajahi.longitude = jelajahi_data.longitude
+        
+        db.flush()
+        db.refresh(jelajahi)
+        
+        return jelajahi
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.delete("/jelajahi/{jelajahi_id}")
+def delete_jelajahi(jelajahi_id: int, db: Session = Depends(get_db)):
+    try:
+        jelajahi = db.query(Jelajahi).filter(Jelajahi.id == jelajahi_id).first()
+        if not jelajahi:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+        
+        db.delete(jelajahi)
+        db.flush()
+        
+        return {"message": "Lokasi berhasil dihapus"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.get("/jelajahi/{jelajahi_id}", response_model=JelajahiWithRambuResponse)
+def get_jelajahi_by_id(jelajahi_id: int, db: Session = Depends(get_db)):
+    try:
+        result = db.query(
+            Jelajahi.id,
+            Jelajahi.rambu_id,
+            Jelajahi.latitude,
+            Jelajahi.longitude,
+            Rambu.nama,
+            Rambu.gambar_url,
+            Rambu.deskripsi,
+            Rambu.kategori
+        ).join(
+            Rambu, Jelajahi.rambu_id == Rambu.id
+        ).filter(
+            Jelajahi.id == jelajahi_id
+        ).first()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+        
+        gambar_url = result.gambar_url
+        if gambar_url and not gambar_url.startswith('http'):
+            if not gambar_url.startswith('/'):
+                gambar_url = f"/{gambar_url}"
+        
+        return {
+            "id": result.id,
+            "rambu_id": result.rambu_id,
+            "latitude": float(result.latitude),
+            "longitude": float(result.longitude),
+            "nama": result.nama,
+            "gambar_url": gambar_url,
+            "deskripsi": result.deskripsi,
+            "kategori": result.kategori
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # === ADMIN FEATURES ===
 @app.get("/users/")
@@ -524,13 +677,66 @@ def get_statistics(db: Session = Depends(get_db)):
     try:
         total_users = db.query(User).count()
         total_rambu = db.query(Rambu).count()
+        total_jelajahi = db.query(Jelajahi).count()
         
         return {
             "total_users": total_users,
-            "total_rambu": total_rambu
+            "total_rambu": total_rambu,
+            "total_jelajahi": total_jelajahi
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saat mengambil statistik: {str(e)}")
+
+@app.post("/jelajahi/from-map")
+async def create_jelajahi_from_map(
+    rambu_nama: str = Form(...),
+    latitude: str = Form(...),
+    longitude: str = Form(...),
+    kategori: str = Form(...),
+    deskripsi: Optional[str] = Form(None),
+    gambar: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        try:
+            lat_float = float(latitude)
+            lng_float = float(longitude)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Latitude/Longitude format tidak valid")
+        
+        if not (-90 <= lat_float <= 90) or not (-180 <= lng_float <= 180):
+            raise HTTPException(status_code=400, detail="Latitude/Longitude tidak valid")
+        
+        gambar_path = save_uploaded_file(gambar, RAMBU_IMAGES_DIR)
+        
+        new_rambu = Rambu(
+            nama=rambu_nama,
+            deskripsi=deskripsi,
+            kategori=kategori,
+            gambar_url=gambar_path
+        )
+        db.add(new_rambu)
+        db.flush()
+        db.refresh(new_rambu)
+        
+        new_jelajahi = Jelajahi(
+            rambu_id=new_rambu.id,
+            latitude=lat_float,
+            longitude=lng_float
+        )
+        db.add(new_jelajahi)
+        db.flush()
+        db.refresh(new_jelajahi)
+        
+        return {
+            "message": "Rambu dan lokasi berhasil ditambahkan",
+            "rambu_id": new_rambu.id,
+            "jelajahi_id": new_jelajahi.id
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
