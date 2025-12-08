@@ -12,11 +12,13 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: 0.20.2
-  shared_preferences: ^2.2.2
+
+  # --- Library External ---
+  shared_preferences: ^2.2.2  # Penyimpanan Lokal
+  intl: 0.20.2               # Format Tanggal
   provider: ^6.1.1
   curved_labeled_navigation_bar: ^2.0.6
-  flutter_tts: ^3.8.3 
+  flutter_tts: ^3.8.3
   flutter_launcher_icons: ^0.14.2
   camera: ^0.10.5+5
   image_picker: ^1.0.4
@@ -29,8 +31,13 @@ dependencies:
   sqflite: ^2.3.0
   path: ^1.9.0
   path_provider: ^2.1.0
-  
 
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+# Konfigurasi Icon Aplikasi
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
@@ -39,18 +46,15 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/images/logo_rambuid.png"
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^5.0.0
-
 flutter:
   uses-material-design: true
 
+  # Konfigurasi Aset
   assets:
     - assets/images/
     - assets/database/rambuid.db
 
+  # Konfigurasi Font
   fonts:
     - family: Poppins
       fonts:

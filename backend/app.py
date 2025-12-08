@@ -1,15 +1,25 @@
+import pathlib
+from pathlib import Path
+# Fix untuk Windows Path jika diperlukan
+pathlib.PosixPath = pathlib.WindowsPath
+
 import os
 import shutil
 import uuid
+import io 
 from typing import List, Optional
 
 import uvicorn
+import torch # Library Utama AI (PyTorch)
+from PIL import Image # Library pengolah gambar
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from passlib.context import CryptContext
-from pydantic import BaseModel
-from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey, create_engine
+
+# --- GABUNGAN IMPORTS (MERGED) ---
+from pydantic import BaseModel, EmailStr
+from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey, create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, sessionmaker, relationship
 
@@ -118,6 +128,9 @@ class UpdateProfileRequest(BaseModel):
     alamat: Optional[str] = None
     password: Optional[str] = None
 
+# --- GABUNGAN SCHEMA (JELAJAHI milik Si M & AI milik Kamu) ---
+
+# 1. Schema Maps (Dari Si M)
 class JelajahiCreate(BaseModel):
     rambu_id: int
     latitude: float
@@ -145,6 +158,16 @@ class JelajahiWithRambuResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# 2. Schema AI (Dari Kamu)
+class AIResponse(BaseModel):
+    status: str
+    terdeteksi: bool
+    nama_rambu: Optional[str] = None
+    confidence: Optional[float] = None
+    deskripsi: Optional[str] = None
+    kategori: Optional[str] = None
+    pesan: str
+
 # --- SETUP APLIKASI ---
 app = FastAPI(title="RambuID API", version="1.0.0")
 
@@ -160,6 +183,33 @@ app.add_middleware(
 
 # Buat semua tabel
 Base.metadata.create_all(bind=engine)
+
+# --- LOAD MODEL AI (YOLOv5) ---
+# Global variable untuk menyimpan model
+ai_model = None
+
+@app.on_event("startup")
+def load_ai_model():
+    global ai_model
+    try:
+        # Path ke file best.pt (Pastikan file ini ada di sebelah app.py)
+        model_path = os.path.join(BASE_DIR, "best.pt")
+        
+        if os.path.exists(model_path):
+            print(f"Memuat model AI dari: {model_path}")
+            # Load model custom YOLOv5
+            ai_model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True)
+            
+            # --- KONFIGURASI GLOBAL AI ---
+            ai_model.conf = 0.10  
+            ai_model.iou = 0.45   # IOU Threshold standar
+            # -----------------------------
+            
+            print(f"Model AI berhasil dimuat! (Confidence Threshold: {ai_model.conf})")
+        else:
+            print("PERINGATAN: File 'best.pt' tidak ditemukan. Fitur AI tidak akan berfungsi.")
+    except Exception as e:
+        print(f"ERROR memuat model AI: {str(e)}")
 
 # --- FUNGSI BANTU ---
 def get_db():
@@ -195,11 +245,116 @@ def save_uploaded_file(file: UploadFile, destination_dir: str, prefix: str = "")
 
 @app.get("/")
 def read_root():
-    return {"message": "Server Rambuid Berjalan!"}
+    return {"message": "Server Rambuid Berjalan dengan Integrasi AI & Maps!"}
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "Backend is running"}
+    ai_status = "active" if ai_model is not None else "inactive"
+    return {"status": "ok", "ai_model": ai_status}
+
+# === AI DETECTION ENDPOINT (DENGAN KAMUS MANUAL DARI DATA.YAML) ===
+@app.post("/deteksi-rambu/", response_model=AIResponse)
+async def detect_sign_ai(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db)
+):
+    """
+    Menerima gambar, melakukan deteksi objek (YOLOv5), 
+    dan mencocokkan hasil dengan database Rambu.
+    """
+    if ai_model is None:
+        raise HTTPException(status_code=503, detail="Model AI belum siap/tidak ditemukan di server.")
+
+    try:
+        # 1. Baca file gambar & KONVERSI KE RGB (FIX UNTUK PNG)
+        image_data = await file.read()
+        # .convert("RGB") sangat penting untuk mengatasi file PNG Transparan (RGBA)
+        img = Image.open(io.BytesIO(image_data)).convert("RGB")
+
+        # 2. Lakukan Prediksi (Menggunakan confidence global 0.10)
+        results = ai_model(img)
+        
+        # --- DEBUG: MONITORING TERMINAL ---
+        print("\n" + "="*30)
+        print(f"--- DEBUG: Deteksi '{file.filename}' ---")
+        # Mencetak hasil mentah (koordinat, confidence, class, name) ke terminal
+        print(results.pandas().xyxy[0]) 
+        print("="*30 + "\n")
+        # ---------------------------------------------
+
+        # 3. Ambil data hasil (Pandas DataFrame)
+        df_results = results.pandas().xyxy[0]
+
+        if df_results.empty:
+            return {
+                "status": "sukses",
+                "terdeteksi": False,
+                "pesan": "Tidak ada rambu yang dikenali dalam gambar ini."
+            }
+
+        # 4. Ambil hasil dengan confidence tertinggi
+        top_prediction = df_results.iloc[0]
+        class_index = int(top_prediction['class']) # Ambil Angka Kelas (0-19)
+        confidence = float(top_prediction['confidence'])
+
+        # --- KAMUS PENERJEMAH (SESUAI DATA.YAML RAMBUV6) ---
+        names_dictionary = {
+            0: 'Belok Kanan',
+            1: 'Belok Kiri',
+            2: 'Dilarang Belok Kanan',
+            3: 'Dilarang Belok Kiri',
+            4: 'Dilarang Berhenti',
+            5: 'Dilarang Parkir',
+            6: 'Dilarang Putar Balik',
+            7: 'Hati-hati',
+            8: 'Jalan Berkelok',
+            9: 'Kecepatan Maksimal 100 km-jam',
+            10: 'Kecepatan Maksimal 80 km-jam',
+            11: 'Kecepatan Minimal 60 km-jam',
+            12: 'Lampu Hijau',
+            13: 'Lampu Kuning',
+            14: 'Lampu Merah',
+            15: 'Polisi Tidur',
+            16: 'Putar Balik',
+            17: 'Satu Arah',
+            18: 'Tanjakan Tajam',
+            19: 'Turunan Curam'
+        }
+        
+        # Ambil nama dari kamus berdasarkan ID. 
+        detected_name = names_dictionary.get(class_index, f"Rambu Tidak Dikenal (ID: {class_index})")
+        # -----------------------------------------------------------
+
+        # 5. Cari info detail di Database berdasarkan nama yang sudah diterjemahkan
+        search_keyword = detected_name
+
+        # Menggunakan ILIKE untuk case-insensitive search
+        rambu_info = db.query(Rambu).filter(Rambu.nama.ilike(f"%{search_keyword}%")).first()
+
+        deskripsi_db = "Deskripsi belum tersedia di database."
+        kategori_db = "Tidak Diketahui"
+
+        if rambu_info:
+            deskripsi_db = rambu_info.deskripsi
+            kategori_db = rambu_info.kategori
+        else:
+            # Pesan agar admin tahu nama apa yang harus diinput
+            deskripsi_db = f"Data belum ada. Silakan input rambu dengan nama: '{detected_name}' di Admin."
+        
+        return {
+            "status": "sukses",
+            "terdeteksi": True,
+            "nama_rambu": detected_name, 
+            "confidence": confidence,
+            "deskripsi": deskripsi_db,
+            "kategori": kategori_db,
+            "pesan": f"Berhasil mendeteksi: {detected_name}"
+        }
+
+    except Exception as e:
+        print(f"Error AI: {e}")
+        raise HTTPException(status_code=500, detail="Terjadi kesalahan saat memproses gambar.")
+
 
 # === AUTHENTICATION ===
 @app.post("/register", response_model=RegisterResponse, status_code=201)
@@ -295,18 +450,13 @@ def update_user_profile(
             file_extension = os.path.splitext(profile_image.filename)[1].lower()
             
             if file_extension not in allowed_extensions:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Format file tidak didukung. Gunakan JPG, PNG, atau GIF"
-                )
+                raise HTTPException(status_code=400, detail="Format file tidak didukung.")
             
             if user.profile_image:
                 old_image_path = os.path.join(BASE_DIR, user.profile_image.lstrip('/'))
                 if os.path.exists(old_image_path):
-                    try:
-                        os.remove(old_image_path)
-                    except:
-                        pass
+                    try: os.remove(old_image_path)
+                    except: pass
             
             image_path = save_uploaded_file(profile_image, PROFILE_IMAGES_DIR, prefix="profile_")
             user.profile_image = image_path
@@ -352,16 +502,14 @@ def delete_profile_image(user_id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error hapus foto profil: {str(e)}")
 
-# === CRUD RAMBU DENGAN GAMBAR ===
+# === CRUD RAMBU ===
 @app.get("/rambu/", response_model=List[RambuResponse])
 def get_all_rambu(db: Session = Depends(get_db)):
     rambu_list = db.query(Rambu).all()
-    
     for rambu in rambu_list:
         if rambu.gambar_url and not rambu.gambar_url.startswith('http'):
             if not rambu.gambar_url.startswith('/'):
                 rambu.gambar_url = f"/{rambu.gambar_url}"
-    
     return rambu_list
 
 @app.post("/rambu/", response_model=RambuResponse, status_code=201)
@@ -375,19 +523,12 @@ def create_rambu(
     try:
         valid_kategori = ['larangan', 'peringatan', 'petunjuk', 'perintah']
         if kategori not in valid_kategori:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Kategori tidak valid. Pilih salah satu: {', '.join(valid_kategori)}"
-            )
+            raise HTTPException(status_code=400, detail=f"Kategori tidak valid.")
         
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
         file_extension = os.path.splitext(gambar.filename)[1].lower()
-        
         if file_extension not in allowed_extensions:
-            raise HTTPException(
-                status_code=400, 
-                detail="Format file tidak didukung. Gunakan JPG, PNG, atau GIF"
-            )
+            raise HTTPException(status_code=400, detail="Format file tidak didukung.")
         
         gambar_path = save_uploaded_file(gambar, RAMBU_IMAGES_DIR)
         
@@ -434,21 +575,14 @@ def update_rambu(
         if kategori is not None:
             valid_kategori = ['larangan', 'peringatan', 'petunjuk', 'perintah']
             if kategori not in valid_kategori:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Kategori tidak valid. Pilih salah satu: {', '.join(valid_kategori)}"
-                )
+                raise HTTPException(status_code=400, detail=f"Kategori tidak valid.")
             rambu.kategori = kategori
         
         if gambar:
             allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
             file_extension = os.path.splitext(gambar.filename)[1].lower()
-            
             if file_extension not in allowed_extensions:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Format file tidak didukung"
-                )
+                raise HTTPException(status_code=400, detail="Format file tidak didukung")
             
             if rambu.gambar_url:
                 old_image_path = os.path.join(BASE_DIR, rambu.gambar_url.lstrip('/'))
@@ -496,7 +630,7 @@ def delete_rambu(rambu_id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error hapus rambu: {str(e)}")
 
-# === JELAJAHI ENDPOINTS ===
+# === JELAJAHI ENDPOINTS (FITUR DARI SI M) ===
 @app.get("/jelajahi/", response_model=List[JelajahiWithRambuResponse])
 def get_all_jelajahi_with_rambu(db: Session = Depends(get_db)):
     """Mendapatkan semua data jelajahi dengan informasi rambu"""
