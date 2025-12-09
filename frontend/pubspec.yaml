@@ -17,6 +17,7 @@ dependencies:
   shared_preferences: ^2.2.2  # Penyimpanan Lokal
   intl: 0.20.2               # Format Tanggal
   provider: ^6.1.1
+  permission_handler: ^11.3.1 # <--- TAMBAHKAN BARIS INI DI SINI
   curved_labeled_navigation_bar: ^2.0.6
   flutter_tts: ^3.8.3
   flutter_launcher_icons: ^0.14.2

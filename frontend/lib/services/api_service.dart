@@ -11,17 +11,15 @@ class ApiService {
   // KONFIGURASI KONEKSI (Gabungan Logic IP & Web)
   // ===========================================================================
   
-  // Ganti IP ini sesuai IP Laptop kamu jika testing di HP Fisik
-  static const String _myLaptopIp = '192.168.1.10'; // CONTOH: Sesuaikan dengan ipconfig kamu
+  // IP Laptop kamu (Sesuai kode yang kamu kirim)
+  static const String _myLaptopIp = '10.29.88.221'; 
   static const String _port = '8000';
 
   static String get baseUrl {
     if (kIsWeb) {
-      return 'http://localhost:$_port'; // Untuk Browser Chrome
+      return 'http://localhost:$_port';
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      // Gunakan 10.0.2.2 jika Emulator, gunakan IP Laptop jika HP Fisik
-      // Kita pakai logika IP Laptop agar aman untuk keduanya (jika satu jaringan)
       return 'http://$_myLaptopIp:$_port'; 
     }
     return 'http://$_myLaptopIp:$_port';
@@ -33,7 +31,7 @@ class ApiService {
       };
 
   // ===========================================================================
-  // DEBUG & TESTING (Dari Codingan Si M - Berguna untuk Cek Koneksi)
+  // DEBUG & TESTING
   // ===========================================================================
 
   static Future<void> testEndpoints() async {
@@ -61,7 +59,7 @@ class ApiService {
   }
 
   // ===========================================================================
-  // AUTHENTICATION (Login & Register)
+  // AUTHENTICATION
   // ===========================================================================
 
   static Future<Map<String, dynamic>> login(String username, String password) async {
@@ -137,7 +135,6 @@ class ApiService {
     String? password,
     XFile? profileImage,
   }) async {
-    // Deteksi apakah Web atau Mobile untuk penanganan file gambar
     if (kIsWeb) {
       Uint8List? imageBytes;
       String? fileName;
@@ -182,7 +179,7 @@ class ApiService {
   }
 
   // ===========================================================================
-  // ADMIN FEATURES (Dashboard & Users)
+  // ADMIN FEATURES
   // ===========================================================================
 
   static Future<Map<String, dynamic>> getAllUsers() async {
@@ -293,7 +290,7 @@ class ApiService {
   }
 
   // ===========================================================================
-  // AI DETECTION SERVICE (FITUR KAMU)
+  // AI DETECTION SERVICE
   // ===========================================================================
 
   static Future<Map<String, dynamic>> detectRambu(XFile image) async {
@@ -334,14 +331,13 @@ class ApiService {
   }
 
   // ===========================================================================
-  // JELAJAHI ENDPOINTS (FITUR SI M - DENGAN LOGIKA LENGKAP)
+  // JELAJAHI ENDPOINTS
   // ===========================================================================
 
   static Future<Map<String, dynamic>> getJelajahiWithRambu() async {
     try {
       debugPrint('🔍 === MENGAMBIL DATA JELAJAHI DENGAN RAMBU ===');
       
-      // OPTION 1: Coba endpoint utama dulu
       final url = '$baseUrl/jelajahi/';
       debugPrint('🔵 Menggunakan endpoint: $url');
 
@@ -351,51 +347,39 @@ class ApiService {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
-        // Cek struktur data apakah sudah lengkap (ada nama rambu dsb)
         if (data is List && data.isNotEmpty) {
           final firstItem = data.first;
-           // Jika data sudah mengandung info rambu (nama, kategori, dll)
           if (firstItem.containsKey('nama') && firstItem.containsKey('gambar_url')) {
             return {'success': true, 'data': data};
           }
         }
-        
-        // Jika data tidak lengkap, gunakan Option 2 (Gabung manual)
         debugPrint('⚠️ Data simple, mencoba mengambil data gabungan...');
         return await _getCombinedData();
-        
       } else {
         debugPrint('❌ Endpoint utama gagal, mencoba alternatif...');
         return await _getCombinedData();
       }
-      
     } catch (e) {
       debugPrint('❌ Error: $e');
       return {'success': false, 'message': 'Koneksi gagal: $e'};
     }
   }
 
-  // Helper untuk menggabungkan data Jelajahi + Rambu (Backup Plan)
   static Future<Map<String, dynamic>> _getCombinedData() async {
     try {
-      // 1. Ambil list Rambu
       final rambuResponse = await getRambuList();
       if (!rambuResponse['success']) return rambuResponse;
       final rambuList = rambuResponse['data'] as List<dynamic>;
       
-      // 2. Ambil list Lokasi
       final jelajahiUrl = '$baseUrl/jelajahi/';
       final jelajahiResponse = await http.get(Uri.parse(jelajahiUrl), headers: headers);
       if (jelajahiResponse.statusCode != 200) return {'success': false, 'message': 'Gagal ambil lokasi'};
       
       final jelajahiList = jsonDecode(jelajahiResponse.body) as List<dynamic>;
       
-      // 3. Gabungkan
       List<Map<String, dynamic>> combinedData = [];
       for (var location in jelajahiList) {
         int? rambuId = location['rambu_id'];
-        
         var rambu = rambuList.firstWhere((r) => r['id'] == rambuId, orElse: () => null);
         
         if (rambu != null) {
@@ -485,7 +469,7 @@ class ApiService {
   }
 
   // ===========================================================================
-  // PRIVATE HELPERS (MOBILE & WEB IMPLEMENTATION)
+  // PRIVATE HELPERS
   // ===========================================================================
 
   static Future<Map<String, dynamic>> _updateUserProfileMobile({
@@ -649,5 +633,33 @@ class ApiService {
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
     }
+  }
+
+// === FUNGSI FIX GAMBAR (UPDATE) ===
+  static String getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return 'https://via.placeholder.com/150';
+    }
+
+    // 1. Jika sudah ada http, langsung pakai
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+
+    // 2. FIX WINDOWS: Ubah Backslash (\) jadi Forward Slash (/)
+    String cleanPath = imagePath.replaceAll('\\', '/');
+
+    // 3. Pastikan diawali dengan /
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/$cleanPath';
+    }
+
+    // 4. Gabungkan dengan Base URL
+    String finalUrl = '$baseUrl$cleanPath';
+    
+    // DEBUG: Cek di Terminal apakah URL-nya benar
+    debugPrint('🖼️ LOAD GAMBAR: $finalUrl');
+    
+    return finalUrl;
   }
 }

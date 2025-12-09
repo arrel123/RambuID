@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart'; // <--- TAMBAHAN PENTING
 import 'dart:io';
 import '../services/api_service.dart';      // Import API Service
-import '../services/riwayat_service.dart';  // Import Riwayat Service (WAJIB)
+import '../services/riwayat_service.dart';  // Import Riwayat Service
 import '../profile/riwayat.dart';           // Halaman Riwayat
 
 class DeteksiPage extends StatefulWidget {
@@ -34,6 +35,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Kita panggil fungsi init kamera yang sudah aman
     _initializeCamera();
   }
 
@@ -57,7 +59,19 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     }
   }
 
+  // --- PERBAIKAN LOGIKA INISIALISASI KAMERA ---
   Future<void> _initializeCamera() async {
+    // 1. Minta Izin Kamera Terlebih Dahulu
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+      if (!status.isGranted) {
+        // Jika user menolak, hentikan proses agar tidak crash
+        return; 
+      }
+    }
+
+    // 2. Jika izin didapat, baru jalankan logika kamera
     try {
       _cameras = await availableCameras();
       if (_cameras!.isEmpty) {
@@ -80,7 +94,10 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
         });
       }
     } catch (e) {
-      _showErrorDialog('Gagal menginisialisasi kamera: $e');
+      // Jangan tampilkan dialog error jika errornya karena dispose/navigasi
+      if (mounted) {
+        _showErrorDialog('Gagal menginisialisasi kamera: $e');
+      }
     }
   }
 
@@ -144,7 +161,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
             double conf = data['confidence'] ?? 0.0;
             _hasilConfidence = "${(conf * 100).toStringAsFixed(1)}%";
 
-            // 2. SIMPAN KE RIWAYAT (Agar muncul di halaman history)
+            // 2. SIMPAN KE RIWAYAT
             RiwayatService.addRiwayat(
               _hasilNama, 
               data['kategori'] ?? 'Rambu Lalu Lintas'
@@ -191,7 +208,18 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     }
   }
 
+  // --- PERBAIKAN LOGIKA BUKA GALERI ---
   Future<void> _pickImageFromGallery() async {
+    // Cek izin storage untuk Android lama, Android baru biasanya ditangani ImagePicker
+    var status = await Permission.storage.status;
+    
+    // Jika belum diizinkan dan bukan Android 13+ (Android 13+ pakai Photos)
+    // Kita coba request storage dulu untuk amannya
+    if (!status.isGranted) {
+       await Permission.storage.request();
+       // Kita tidak force return di sini karena ImagePicker punya penanganan sendiri
+    }
+
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -205,7 +233,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
         await _processImageWithAI(image); // Kirim ke AI
       }
     } catch (e) {
-      _showErrorDialog('Gagal memilih gambar dari galeri');
+      _showErrorDialog('Gagal memilih gambar dari galeri. Pastikan izin penyimpanan aktif.');
       setState(() { _isProcessing = false; });
     }
   }
@@ -226,7 +254,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     );
   }
 
-  // --- POP-UP HASIL DETEKSI (UI Dinamis) ---
+  // --- POP-UP HASIL DETEKSI ---
   void _showResultDialog() {
     showDialog(
       context: context,
@@ -254,7 +282,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
               ),
             const SizedBox(height: 16),
             
-            // Baris Nama Rambu & Confidence
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -271,7 +298,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 8),
 
-            // KOTAK HASIL (Warna Hijau jika sukses, Merah jika gagal)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -280,7 +306,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                _hasilNama, // <--- VARIABEL DINAMIS DARI AI
+                _hasilNama, 
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -297,9 +323,8 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 8),
             
-            // Deskripsi Dinamis
             Text(
-              _hasilDeskripsi, // <--- VARIABEL DINAMIS DARI DATABASE
+              _hasilDeskripsi, 
               style: const TextStyle(fontSize: 14, height: 1.5),
             ),
           ],
@@ -382,11 +407,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     );
   }
 
-  // ... (Widget UI lainnya: _buildCameraContainer, _buildCameraPreview, _buildActionButtons, dll. TETAP SAMA seperti sebelumnya)
-  // Anda bisa menyalin bagian Widget UI dari kode Anda sebelumnya, 
-  // karena perubahannya hanya di LOGIC (_processImageWithAI) dan IMPORT.
-  
-  // Biar lengkap, saya sertakan widget helper-nya juga:
   Widget _buildCameraContainer() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -410,7 +430,8 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
   Widget _buildCameraPreview() {
     if (!_isCameraInitialized || _cameraController == null) {
-      return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.black54)));
+      // Tampilkan tombol "Izinkan Kamera" jika permission belum diberikan, atau loading
+      return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
     }
     return LayoutBuilder(
       builder: (context, constraints) {

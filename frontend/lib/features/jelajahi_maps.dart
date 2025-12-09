@@ -6,7 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import '../../services/api_service.dart';
-import 'detailrambu.dart'; // IMPORT UNTUK DETAIL RAMBU
+import 'detailrambu.dart'; 
 
 class JelajahiMapsPage extends StatefulWidget {
   const JelajahiMapsPage({super.key});
@@ -34,6 +34,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
   @override
   void dispose() {
     searchController.dispose();
+    mapController.dispose();
     super.dispose();
   }
 
@@ -60,6 +61,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         headers: {'User-Agent': 'RambuID Flutter App'},
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         
@@ -73,15 +76,14 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         isSearching = false;
       });
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal mencari lokasi')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal mencari lokasi')),
+      );
     }
   }
 
@@ -104,11 +106,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
           color: Colors.purple,
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white, width: 3),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
+              color: Color.fromRGBO(0, 0, 0, 0.4),
               blurRadius: 8,
-              offset: const Offset(0, 4),
+              offset: Offset(0, 4),
             ),
           ],
         ),
@@ -140,6 +142,8 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
     try {
       final response = await ApiService.getJelajahiWithRambu();
       
+      if (!mounted) return;
+
       if (response['success'] == true) {
         final data = response['data'] as List<dynamic>;
 
@@ -156,7 +160,6 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
             double? lat;
             double? lng;
             
-            // Handle berbagai format latitude/longitude
             if (item['latitude'] is double) {
               lat = item['latitude'];
             } else if (item['latitude'] is String) {
@@ -211,11 +214,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                         color: color,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: [
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Color.fromRGBO(0, 0, 0, 0.3),
                             blurRadius: 6,
-                            offset: const Offset(0, 3),
+                            offset: Offset(0, 3),
                           ),
                         ],
                       ),
@@ -239,7 +242,6 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
               );
             }
           } catch (e) {
-            // Skip invalid data
             continue;
           }
         }
@@ -256,121 +258,133 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         });
       }
 
-    } on TimeoutException catch (e) {
-      setState(() {
-        errorMessage = 'Koneksi timeout. Pastikan backend berjalan.';
-      });
-    } on SocketException catch (e) {
-      setState(() {
-        errorMessage = 'Tidak dapat terhubung ke server.';
-      });
+    // FIX: Hapus catch (e) karena tidak digunakan
+    } on TimeoutException {
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Koneksi timeout. Pastikan backend berjalan.';
+        });
+      }
+    // FIX: Hapus catch (e) karena tidak digunakan
+    } on SocketException {
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Tidak dapat terhubung ke server.';
+        });
+      }
     } catch (e) {
-      setState(() {
-        errorMessage = 'Terjadi kesalahan: ${e.toString()}';
-      });
+      if (mounted) {
+        setState(() {
+          errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+        });
+      }
     }
 
-    setState(() {
-      isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
-  // TAMPILAN DIALOG RINGKAS (TANPA GAMBAR)
+  // FIX: Menggunakan localContext dan Navigator.pop statis
   void _showRambuInfo(Map<String, dynamic> rambuData) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          rambuData['nama'] ?? 'Rambu',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+      builder: (BuildContext localContext) { 
+        return AlertDialog(
+          title: Text(
+            rambuData['nama'] ?? 'Rambu',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Kategori
-              if (rambuData['kategori'] != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getKategoriColor(rambuData['kategori']),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    rambuData['kategori'].toString().toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (rambuData['kategori'] != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _getKategoriColor(rambuData['kategori']),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ),
-                ),
-              
-              const SizedBox(height: 12),
-              
-              // Koordinat
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Expanded(
                     child: Text(
-                      '${rambuData['latitude']}, ${rambuData['longitude']}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      rambuData['kategori'].toString().toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Tombol Selengkapnya
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Tutup dialog
-                    _navigateToDetail(rambuData); // Buka halaman detail
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                
+                const SizedBox(height: 12),
+                
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${rambuData['latitude']}, ${rambuData['longitude']}',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Selengkapnya',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(localContext);
+                      if (mounted) {
+                        _navigateToDetail(rambuData);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Selengkapnya',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(localContext),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // NAVIGASI KE HALAMAN DETAIL
   void _navigateToDetail(Map<String, dynamic> rambuData) {
+    if (!mounted) return;
+
     Navigator.push(
-      context,
+      context, 
       MaterialPageRoute(
         builder: (context) => DetailRambuScreen(rambu: rambuData),
       ),
@@ -489,11 +503,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Color.fromRGBO(0, 0, 0, 0.2),
                       blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 4),
                     ),
                   ],
                 ),
@@ -533,7 +547,6 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                       onSubmitted: _searchLocation,
                     ),
                     
-                    // HASIL PENCARIAN
                     if (searchResults.isNotEmpty)
                       Container(
                         constraints: const BoxConstraints(maxHeight: 200),
@@ -623,11 +636,11 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Color.fromRGBO(0, 0, 0, 0.2),
                       blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      offset: Offset(0, 3),
                     ),
                   ],
                 ),
