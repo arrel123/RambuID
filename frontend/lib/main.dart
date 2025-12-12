@@ -108,7 +108,7 @@ class _HomePageState extends State<HomePage> {
       const KatalogRambuScreen(),
       const EdukasiPage(),
       const DeteksiPage(),
-      const JelajahiMapsPage(), 
+      JelajahiMapsEmbedPage(), 
       SettingAccPage(
         userId: widget.userId,
         username: widget.username,

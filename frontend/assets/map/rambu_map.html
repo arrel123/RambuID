@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Peta Rambu Batam</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { height: 100%; width: 100%; }
+    .btn-detail {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 8px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-detail:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <script>
+    var map = L.map('map').setView([1.119, 104.048], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    const BASE_URL = 'http://localhost:8000';
+
+    const rambuImages = {
+      "Dilarang Parkir": "/static/images/rambu/dilarang_parkir.png",
+      "Belok Kanan": "/static/images/rambu/belok_kanan.png",
+      "Larangan Belok Kanan": "/static/images/rambu/larangan_belok_kanan.png",
+      "Belok Kiri": "/static/images/rambu/belok_kiri.png",
+      "Kecepatan Maksimal 80km": "/static/images/rambu/kec_maks_80km.jpg",
+      "Dilarang Parkir": "/static/images/rambu/dilarang_parkir.png",
+      "Jalan Satu Arah": "/static/images/rambu/jalan_satu_arah.png",
+      "Dilarang Berhenti": "/static/images/rambu/dilarang_berhenti.png",
+      "Larangan Putar Balik": "/static/images/rambu/larangan_putar_balik.png",
+    };
+
+    function markerIcon(color) {
+      return L.icon({
+        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-" + color + ".png",
+        shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+      });
+    }
+
+    function addMarker(lat, lng, nama, warna, kategori, deskripsi) {
+      const gambarPath = rambuImages[nama] || '';
+      const gambarUrl = gambarPath ? BASE_URL + gambarPath : '';
+
+      const link = document.createElement('a');
+      link.className = 'btn-detail';
+      link.textContent = 'Selengkapnya';
+      link.href = '#';
+      link.onclick = function(e) {
+        e.preventDefault();
+
+        const data = {
+          action: 'detail',
+          nama,
+          kategori,
+          deskripsi,
+          gambar_url: gambarUrl,
+          lat,
+          lng
+        };
+
+        window.parent.postMessage(JSON.stringify(data), '*');
+      };
+
+      const popupContent = document.createElement('div');
+      popupContent.innerHTML = `<b>${nama}</b><br>Lat: ${lat}<br>Lng: ${lng}<br>`;
+      popupContent.appendChild(link);
+
+      L.marker([lat, lng], { icon: markerIcon(warna) })
+        .addTo(map)
+        .bindPopup(popupContent);
+    }
+
+    // Marker sesuai perubahan nama dan deskripsi
+    addMarker(1.1194178, 104.0485686, "Dilarang Parkir", "red", "Larangan", "Area dilarang parkir.");
+    addMarker(1.1193241, 104.0485688, "Belok Kanan", "blue", "Petunjuk", "Rambu arah belok kanan.");
+    addMarker(1.1193241, 104.0485688, "Larangan Belok Kanan", "red", "Larangan", "Dilarang berbelok kanan.");
+    addMarker(1.1189841, 104.0483701, "Belok Kiri", "orange", "Petunjuk", "Petunjuk arah belok kiri.");
+
+    addMarker(1.1187723, 104.0484794, "Dilarang Parkir", "red", "Larangan", "Area dilarang parkir.");
+    addMarker(1.1187723, 104.0484794, "Kecepatan Maksimal 80km", "red", "Larangan", "Batas kecepatan maksimum 80km.");
+    addMarker(1.1187917, 104.0486512, "Dilarang Parkir", "red", "Larangan", "Area dilarang parkir.");
+    addMarker(1.1187917, 104.0486512, "Kecepatan Maksimal 80km", "red", "Larangan", "Batas kecepatan maksimum 80km.");
+
+    addMarker(1.1189314, 104.0491652, "Dilarang Parkir", "blue", "Perintah", "Dilarang parkir.");
+    addMarker(1.1189314, 104.0491652, "Belok Kanan", "green", "Petunjuk", "Rambu arah belok kanan.");
+
+    addMarker(1.1189274, 104.0494293, "Jalan Satu Arah", "blue", "Perintah", "Jalan satu arah.");
+    addMarker(1.1189274, 104.0494293, "Dilarang Parkir", "blue", "Perintah", "Dilarang parkir.");
+
+    addMarker(1.1190402, 104.0498061, "Dilarang Berhenti", "red", "Larangan", "Area dilarang berhenti.");
+    addMarker(1.1193521, 104.0498033, "Dilarang Berhenti", "red", "Larangan", "Area dilarang berhenti.");
+
+    addMarker(1.1193314, 104.0497178, "Jalan Satu Arah", "blue", "Perintah", "Jalan satu arah.");
+    addMarker(1.1196693, 104.0485689, "Dilarang Berhenti", "red", "Larangan", "Dilarang berhenti.");
+
+    addMarker(1.121196, 104.0506728, "Kecepatan maks 80km", "red", "larangan", "Batas kecepatan maksimum 80km.");
+    addMarker(1.1232518, 104.0488668, "Larangan Putar Balik", "red", "Larangan", "Dilarang putar balik.");
+    addMarker(1.1234434, 104.0484989, "Dilarang Parkir", "red", "Larangan", "Dilarang parkir.");
+
+    const titik17 = [
+      [1.1235714, 104.0484017],
+      [1.1250721, 104.0460471],
+      [1.1260623, 104.0449051],
+      [1.1259787, 104.0446061],
+    ];
+    titik17.forEach(t =>
+      addMarker(t[0], t[1], "Dilarang Parkir", "blue", "Petunjuk", "Dilarang parkir.")
+    );
+
+    const titik18 = [
+      [1.1236122, 104.0484754],
+      [1.1236122, 104.0484754],
+      [1.1260623, 104.0449051],
+      [1.1261133, 104.0446012],
+    ];
+    titik18.forEach(t =>
+      addMarker(t[0], t[1], "Dilarang Berhenti", "red", "Larangan", "Dilarang berhenti.")
+    );
+
+    addMarker(1.1260608, 104.0444375, "Larangan Putar Balik", "red", "Larangan", "Larangan putar balik.");
+    addMarker(1.1256143, 104.0433794, "Belok Kanan", "orange", "Petunjuk", "Rambu arah belok kanan.");
+    addMarker(1.1256143, 104.0433794, "Belok Kanan", "blue", "Petunjuk", "Rambu arah belok kanan.");
+    addMarker(1.1255602, 104.0432072, "Belok Kanan", "blue", "Petunjuk", "Belok kanan wajib.");
+
+    const titik23 = [
+      [1.1256118, 104.042973],
+      [1.1254701, 104.0428537],
+    ];
+    titik23.forEach(t =>
+      addMarker(t[0], t[1], "Dilarang Parkir", "blue", "Petunjuk", "Dilarang parkir.")
+    );
+
+    const titik24 = [
+      [1.1255091, 104.0430311],
+      [1.1255845, 104.0427939],
+    ];
+    titik24.forEach(t =>
+      addMarker(t[0], t[1], "Dilarang Berhenti", "red", "Larangan", "Dilarang berhenti.")
+    );
+
+    addMarker(1.1200077, 104.0482388, "Kecepatan Maksimal 80km", "red", "larangan", "Batas kecepatan maksimum 80km.");
+    addMarker(1.1178901, 104.0462, "Dilarang Berhenti", "red", "Larangan", "Dilarang berhenti.");
+    addMarker(1.1178901, 104.0462, "Kecepatan Maksimal 80km", "red", "larangan", "Batas kecepatan maksimum 80km.");
+
+    const putarBalik = [
+      [1.1147837, 104.0517206],
+      [1.1144148, 104.0523256],
+      [1.1152162, 104.0544913],
+      [1.115489, 104.0550626],
+    ];
+    putarBalik.forEach(t =>
+      addMarker(t[0], t[1], "Larangan Putar Balik", "red", "Larangan", "Larangan putar balik.")
+    );
+
+  </script>
+</body>
+</html>
