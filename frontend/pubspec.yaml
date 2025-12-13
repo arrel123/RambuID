@@ -55,7 +55,7 @@ flutter:
   assets:
     - assets/images/
     - assets/database/rambuid.db
-    - assets/map/rambu_map.html
+    - assets/data/rambu.json
 
 
   # Konfigurasi Font
