@@ -129,19 +129,39 @@ class _EdukasiPageState extends State<EdukasiPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFD6D588),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(
-          l10n.translate('sign_list'),
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-      ),
+  backgroundColor: const Color(0xFFD6D588),
+  elevation: 0,
+  // ⬅️ TOMBOL BACK (PASTI MUNCUL)
+  leading: IconButton(
+  icon: const Icon(Icons.arrow_back),
+  onPressed: () {
+    Navigator.pushReplacementNamed(
+      context,
+      '/home',
+      arguments: {
+        'userId': 0,
+        'username': '',
+        'initialIndex': 0, // ⬅️ BERANDA
+      },
+    );
+  },
+),
+
+  title: Text(
+    l10n.translate('sign_list'),
+    style: const TextStyle(
+      color: Colors.black,
+      fontSize: 18,
+      fontWeight: FontWeight.w600,
+    ),
+  ),
+
+  iconTheme: const IconThemeData(
+    color: Colors.black, // warna panah
+  ),
+
+  centerTitle: true,
+),
       body: Column(
         children: [
           // Tab Bar

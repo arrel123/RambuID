@@ -6,13 +6,17 @@ class KatalogRambuScreen extends StatelessWidget {
   const KatalogRambuScreen({super.key});
 
   void _navigateToEdukasi(BuildContext context, String category) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EdukasiPage(initialCategory: category),
-      ),
-    );
-  }
+     Navigator.pushReplacementNamed(
+    context,
+    '/home',
+    arguments: {
+      'userId': 0, // sesuaikan user login
+      'username': '',
+      'initialIndex': 1, // TAB EDUKASI
+      'initialCategory': category,
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {

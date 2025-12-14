@@ -25,9 +25,10 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
   void _initTts() {
     flutterTts = FlutterTts();
     flutterTts.setLanguage("id-ID");
-    flutterTts.setSpeechRate(1.0);
+    flutterTts.setSpeechRate(0.50);
     flutterTts.setPitch(1.0);
     flutterTts.setVolume(1.0);
+    flutterTts.setQueueMode(1); 
 
     flutterTts.setStartHandler(() {
       setState(() {
@@ -67,7 +68,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal memutar audio: $e'),
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 1),
         ),
       );
     }
@@ -143,7 +144,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withOpacity(0.2),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -155,10 +156,6 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                     height: 130,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFE53935),
-                        width: 8,
-                      ),
                     ),
                     child: ClipOval(
                       child: imageUrl.isNotEmpty

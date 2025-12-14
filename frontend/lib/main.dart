@@ -68,6 +68,8 @@ class MyApp extends StatelessWidget {
                 builder: (context) => HomePage(
                   userId: args?['userId'] ?? 0,
                   username: args?['username'] ?? '',
+                  initialIndex: args?['initialIndex'] ?? 0,
+                  initialCategory: args?['initialCategory'],
                 ),
               );
             } else if (settings.name == '/admin/dashboard_view') {
@@ -86,11 +88,15 @@ class MyApp extends StatelessWidget {
 class HomePage extends StatefulWidget {
   final int userId;
   final String username;
+  final int initialIndex;
+  final String? initialCategory;
 
   const HomePage({
     super.key,
     required this.userId,
     required this.username,
+    this.initialIndex = 0,
+    this.initialCategory,
   });
 
   @override
@@ -100,20 +106,29 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
+   @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     
     final List<Widget> pages = [
-      const KatalogRambuScreen(),
-      const EdukasiPage(),
-      const DeteksiPage(),
-      JelajahiMapsPage(), 
-      SettingAccPage(
-        userId: widget.userId,
-        username: widget.username,
-      ),
-    ];
+  const KatalogRambuScreen(),
+  EdukasiPage(
+    initialCategory: widget.initialCategory,
+  ),
+  const DeteksiPage(),
+  JelajahiMapsPage(),
+  SettingAccPage(
+    userId: widget.userId,
+    username: widget.username,
+  ),
+];
+
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
