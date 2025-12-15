@@ -44,13 +44,14 @@ class MyApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: const [
-            Locale('en', ''), // English
-            Locale('id', ''), // Indonesian
+            Locale('en', ''), 
+            Locale('id', ''), 
           ],
           
           theme: ThemeData(
             fontFamily: 'Poppins',
             primaryColor: const Color(0xFFD6D588),
+            scaffoldBackgroundColor: const Color(0xFFFFFFFF),
             colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFD6D588)),
           ),
           
@@ -106,59 +107,81 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-   @override
+  @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
   }
+
+  // Di dalam file main.dart -> class _HomePageState
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     
     final List<Widget> pages = [
-  const KatalogRambuScreen(),
-  EdukasiPage(
-    initialCategory: widget.initialCategory,
-  ),
-  const DeteksiPage(),
-  JelajahiMapsPage(),
-  SettingAccPage(
-    userId: widget.userId,
-    username: widget.username,
-  ),
-];
-
+      // 🔥 PERBAIKAN: Kirim userId dan username ke Beranda (KatalogRambuScreen)
+      KatalogRambuScreen(
+        userId: widget.userId,
+        username: widget.username,
+      ), 
+      EdukasiPage(
+        initialCategory: widget.initialCategory,
+      ),
+      const DeteksiPage(),
+      JelajahiMapsPage(), 
+      SettingAccPage(
+        userId: widget.userId,
+        username: widget.username,
+      ),
+    ];
 
     return Scaffold(
+      // ✅ FIX 1: extendBody membuat konten memanjang ke belakang navbar (efek transparan)
+      extendBody: true, 
       backgroundColor: const Color(0xFFFFFFFF),
+      
       body: pages[_selectedIndex],
 
       bottomNavigationBar: CurvedNavigationBar(
-        backgroundColor: const Color(0xFFFFFFFF),
+        // ✅ FIX 2: Background transparan agar menyatu dengan body
+        backgroundColor: Colors.transparent, 
+        
+        // Warna batang navigasi
         color: const Color(0xFFD6D588),
+        
+        // Warna lingkaran tombol (Dikembalikan ke warna semula)
         buttonBackgroundColor: const Color(0xFFD6D588),
+        
+        height: 65, 
         animationDuration: const Duration(milliseconds: 300),
+        
+        // ✅ FIX 3: Ikon dikembalikan ke default (tanpa color: Colors.white)
         items: [
           CurvedNavigationBarItem(
-            child: const Icon(Icons.home_outlined),
+            child: const Icon(Icons.home_outlined), 
             label: l10n.navHome,
+            labelStyle: const TextStyle(fontSize: 10, color: Colors.black54),
           ),
           CurvedNavigationBarItem(
             child: const Icon(Icons.description_outlined),
             label: l10n.navEducation,
+            labelStyle: const TextStyle(fontSize: 10, color: Colors.black54),
           ),
           CurvedNavigationBarItem(
             child: const Icon(Icons.document_scanner_outlined),
             label: l10n.navDetection,
+            labelStyle: const TextStyle(fontSize: 10, color: Colors.black54),
           ),
           CurvedNavigationBarItem(
             child: const Icon(Icons.location_on_outlined),
             label: l10n.navExplore,
+            labelStyle: const TextStyle(fontSize: 10, color: Colors.black54),
           ),
           CurvedNavigationBarItem(
             child: const Icon(Icons.perm_identity),
             label: l10n.navPersonal,
+            labelStyle: const TextStyle(fontSize: 10, color: Colors.black54),
           ),
         ],
         onTap: (index) {

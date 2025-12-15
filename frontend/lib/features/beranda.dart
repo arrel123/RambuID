@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
-import 'edukasi.dart';
 
 class KatalogRambuScreen extends StatelessWidget {
-  const KatalogRambuScreen({super.key});
+  // 🔥 TAMBAHKAN INI: Variabel untuk menampung data user
+  final int userId;
+  final String username;
+
+  const KatalogRambuScreen({
+    super.key,
+    required this.userId,
+    required this.username,
+  });
 
   void _navigateToEdukasi(BuildContext context, String category) {
-     Navigator.pushReplacementNamed(
-    context,
-    '/home',
-    arguments: {
-      'userId': 0, // sesuaikan user login
-      'username': '',
-      'initialIndex': 1, // TAB EDUKASI
-      'initialCategory': category,
-    },
-  );
-}
+    Navigator.pushReplacementNamed(
+      context,
+      '/home',
+      arguments: {
+        'userId': userId,     // ✅ GUNAKAN VARIABEL userId YANG BENAR
+        'username': username, // ✅ GUNAKAN VARIABEL username YANG BENAR
+        'initialIndex': 1,    // Pindah ke Tab EDUKASI
+        'initialCategory': category,
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +78,8 @@ class KatalogRambuScreen extends StatelessWidget {
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                         childAspectRatio: 1.0,
+                        // Padding bawah agar tidak tertutup navbar
+                        padding: const EdgeInsets.only(bottom: 100),
                         children: [
                           _buildMenuCard(
                             context: context,
@@ -133,7 +142,7 @@ class KatalogRambuScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

@@ -22,13 +22,22 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     _initTts();
   }
 
-  void _initTts() {
+  void _initTts() async {
     flutterTts = FlutterTts();
-    flutterTts.setLanguage("id-ID");
-    flutterTts.setSpeechRate(0.50);
-    flutterTts.setPitch(1.0);
-    flutterTts.setVolume(1.0);
-    flutterTts.setQueueMode(1); 
+    
+    // GABUNGAN: Menggunakan await (Punya Kamu) + QueueMode (Punya Teman)
+    
+    // Menunggu inisialisasi bahasa
+    await flutterTts.setLanguage("id-ID");
+    
+    // Menggunakan settingan kamu (0.4) agar lebih jelas seperti Google Translate
+    await flutterTts.setSpeechRate(0.4); 
+    
+    await flutterTts.setPitch(1.0);
+    await flutterTts.setVolume(1.0);
+
+    // Menggunakan fitur temanmu (QueueMode 1) agar suara tidak antri panjang jika tombol ditekan berulang
+    await flutterTts.setQueueMode(1); 
 
     flutterTts.setStartHandler(() {
       setState(() {
@@ -135,7 +144,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
             children: [
               const SizedBox(height: 10),
 
-              // Rambu Image
+              // Rambu Image Section
               Container(
                 width: 150,
                 height: 150,
@@ -154,14 +163,15 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   child: Container(
                     width: 130,
                     height: 130,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
+                      // Border dihapus sesuai request kamu agar tidak ada lingkaran merah
                     ),
                     child: ClipOval(
                       child: imageUrl.isNotEmpty
                           ? Image.network(
                               imageUrl,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                               errorBuilder: (ctx, err, stack) => 
                                   const Icon(Icons.broken_image, size: 50),
                             )

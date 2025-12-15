@@ -125,7 +125,8 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                           result['profileImage'] as String?,
                         );
 
-                        // Return data ke SettingAccPage
+                        // PERBAIKAN: SnackBar Hijau DIHAPUS DISINI.
+                        // Hanya melakukan navigasi balik untuk update data di SettingAccPage
                         if (mounted) {
                           Navigator.pop(context, {
                             'nama': _namaLengkap,
@@ -133,13 +134,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                             'alamat': _alamat,
                             'profileImage': _profileImage,
                           });
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(l10n.profileUpdateSuccess),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
                         }
                       }
                     },

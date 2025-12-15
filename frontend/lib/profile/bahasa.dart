@@ -1,10 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async'; // Diperlukan untuk Timer
 import '../l10n/app_localizations.dart';
 import '../providers/language_provider.dart';
 
 class BahasaPage extends StatelessWidget {
   const BahasaPage({super.key});
+
+  // --- FUNGSI POP-UP GAYA LOGIN PAGE (PENGGANTI SNACKBAR) ---
+  void _showSuccessDialog(BuildContext context, String languageName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User tidak bisa klik luar
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Icon Checklis Biru
+              const Icon(
+                Icons.check_circle_outline,
+                color: Color(0xFF64B5F6), // Warna Biru Muda
+                size: 60,
+              ),
+              const SizedBox(height: 16),
+              
+              // 2. Judul Besar
+              const Text(
+                'Berhasil Diganti',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF555555), // Abu Gelap
+                ),
+              ),
+              const SizedBox(height: 10),
+              
+              // 3. Subtitle
+              Text(
+                'Bahasa diubah ke $languageName',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF777777), // Abu Terang
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Timer 2 Detik: Tutup Pop-up Otomatis
+    Future.delayed(const Duration(seconds: 2), () {
+      // Cek apakah context masih valid sebelum pop
+      // Kita menggunakan Navigator.of(context, rootNavigator: true) untuk memastikan dialog tertutup
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -179,22 +239,19 @@ class BahasaPage extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                // Ubah bahasa menggunakan Provider
+                // 1. Ubah Bahasa
                 await Provider.of<LanguageProvider>(context, listen: false)
                     .changeLanguage(newLanguage);
                 
+                // 2. Tutup Dialog Konfirmasi (dialogContext)
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
                 }
                 
+                // 3. Tampilkan Pop-up Sukses (Gaya Login)
+                // Menggunakan 'context' utama (bukan dialogContext)
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${l10n.languageChanged} $languageName'),
-                      backgroundColor: const Color(0xFF8B9C4A),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
+                  _showSuccessDialog(context, languageName);
                 }
               },
               child: Text(

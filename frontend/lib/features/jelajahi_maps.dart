@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
@@ -16,167 +15,126 @@ class JelajahiMapsPage extends StatefulWidget {
 
 class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
   final MapController _mapController = MapController();
-  final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> rambuData = [];
-  List<Map<String, dynamic>> filteredLocations = [];
   bool _mapReady = false;
-  bool _showSearchResults = false;
-  bool _isSearching = false;
   Map<String, dynamic>? _selectedRambu;
-
-  List<Map<String, dynamic>> _edukasiRambuList = [];
-
-  final List<Map<String, dynamic>> batamLocations = [
-    {'nama': 'Baloi Permai', 'kecamatan': 'Batam Kota', 'lat': 1.1167, 'lng': 104.0167},
-    {'nama': 'Belian', 'kecamatan': 'Batam Kota', 'lat': 1.1100, 'lng': 104.0250},
-    {'nama': 'Sukajadi', 'kecamatan': 'Batam Kota', 'lat': 1.1233, 'lng': 104.0200},
-    {'nama': 'Sungai Panas', 'kecamatan': 'Batam Kota', 'lat': 1.1150, 'lng': 104.0100},
-    {'nama': 'Taman Baloi', 'kecamatan': 'Batam Kota', 'lat': 1.1200, 'lng': 104.0150},
-    {'nama': 'Teluk Tering', 'kecamatan': 'Batam Kota', 'lat': 1.1050, 'lng': 104.0300},
-    {'nama': 'Batam Center', 'kecamatan': 'Batam Kota', 'lat': 1.0807, 'lng': 104.0065},
-  ];
+  
+  // Koordinat default Batam Center jika data kosong
+  final LatLng _defaultLocation = const LatLng(1.1295, 104.0538); 
 
   @override
   void initState() {
     super.initState();
     loadRambuData();
-    loadEdukasiRambu();
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
+  // --- FUNGSI UTAMA: LOAD DATA DARI DATABASE (Via API) ---
   Future<void> loadRambuData() async {
     try {
-      final String jsonString = await rootBundle.loadString('assets/data/rambu.json');
-      final List<dynamic> jsonList = jsonDecode(jsonString);
+      // Panggil API Backend
+      final result = await ApiService.getJelajahiPoints();
+      
+      if (result['success']) {
+        final List<dynamic> apiData = result['data'];
+        
+        Map<String, int> coordCount = {};
 
-      print('📍 Total data rambu di JSON: ${jsonList.length}');
-
-      // Track koordinat yang sudah muncul untuk menambahkan offset
-      Map<String, int> coordCount = {};
-
-      setState(() {
-        rambuData = jsonList.asMap().entries.map<Map<String, dynamic>>((entry) {
-          int index = entry.key;
-          var e = entry.value;
-          
-          String colorName;
-          switch (e['warna']) {
-            case 'red':
+        setState(() {
+          rambuData = apiData.asMap().entries.map<Map<String, dynamic>>((entry) {
+            var e = entry.value;
+            
+            // Konversi Kategori ke Warna Marker
+            String kategori = (e['kategori'] ?? '').toString().toLowerCase();
+            String colorName;
+            
+            if (kategori.contains('larangan')) {
               colorName = 'red';
-              break;
-            case 'blue':
+            } else if (kategori.contains('peringatan')) {
+              colorName = 'orange'; // Peringatan biasanya kuning/orange
+            } else if (kategori.contains('perintah')) {
               colorName = 'blue';
-              break;
-            case 'orange':
-              colorName = 'orange';
-              break;
-            case 'green':
+            } else if (kategori.contains('petunjuk')) {
               colorName = 'green';
-              break;
-            default:
+            } else {
               colorName = 'grey';
+            }
+
+            // --- LOGIKA SPIDERFY (Mencegah marker tumpang tindih) ---
+            // Mengambil latitude/longitude dari backend
+            double lat = (e['latitude'] is String) ? double.parse(e['latitude']) : (e['latitude'] ?? 0.0);
+            double lng = (e['longitude'] is String) ? double.parse(e['longitude']) : (e['longitude'] ?? 0.0);
+
+            String coordKey = '$lat,$lng';
+            
+            if (!coordCount.containsKey(coordKey)) {
+              coordCount[coordKey] = 0;
+            } else {
+              coordCount[coordKey] = coordCount[coordKey]! + 1;
+            }
+
+            int duplicateCount = coordCount[coordKey]!;
+            
+            double offsetLat = lat;
+            double offsetLng = lng;
+            
+            if (duplicateCount > 0) {
+              double angle = (duplicateCount * 360 / 8) * (3.14159 / 180);
+              double distance = 0.00008 * duplicateCount;
+              offsetLat += distance * _cos(angle);
+              offsetLng += distance * _sin(angle);
+            }
+            // -------------------------------------------------------
+
+            // Perbaiki URL Gambar agar lengkap (tambah Base URL jika perlu)
+            String rawUrl = e['gambar_url'] ?? '';
+            String fullImageUrl = '';
+            if (rawUrl.isNotEmpty) {
+              fullImageUrl = rawUrl.startsWith('http') ? rawUrl : '${ApiService.baseUrl}$rawUrl';
+            }
+
+            return {
+              'id': e['id'],
+              'nama': e['nama'] ?? 'Rambu Tanpa Nama',
+              'deskripsi': e['deskripsi'] ?? 'Tidak ada deskripsi',
+              'kategori': e['kategori'],
+              'gambar_url': fullImageUrl,
+              'colorName': colorName,
+              'original_lat': lat,
+              'original_lng': lng,
+              'lat': offsetLat,
+              'lng': offsetLng,
+            };
+          }).toList();
+          
+          _mapReady = true;
+        });
+
+        // Zoom otomatis ke marker pertama
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (rambuData.isNotEmpty) {
+            Future.delayed(const Duration(milliseconds: 800), () {
+              _fitBoundsToMarkers();
+            });
           }
-
-          // Buat key untuk tracking koordinat duplikat
-          String coordKey = '${e['lat']},${e['lng']}';
-          
-          // Hitung berapa kali koordinat ini sudah muncul
-          if (!coordCount.containsKey(coordKey)) {
-            coordCount[coordKey] = 0;
-          } else {
-            coordCount[coordKey] = coordCount[coordKey]! + 1;
-          }
-
-          int duplicateCount = coordCount[coordKey]!;
-          
-          // Tambahkan offset kecil jika koordinat duplikat
-          double offsetLat = e['lat'];
-          double offsetLng = e['lng'];
-          
-          if (duplicateCount > 0) {
-            // Offset dalam pola melingkar
-            double angle = (duplicateCount * 360 / 8) * (3.14159 / 180); // Convert to radians
-            double distance = 0.00008 * duplicateCount; // Jarak offset yang sangat kecil
-            offsetLat += distance * cos(angle);
-            offsetLng += distance * sin(angle);
-          }
-          
-          return {
-            ...Map<String, dynamic>.from(e),
-            'colorName': colorName,
-            'index': index,
-            'original_lat': e['lat'],
-            'original_lng': e['lng'],
-            'lat': offsetLat,
-            'lng': offsetLng,
-          };
-        }).toList();
-        _mapReady = true;
-      });
-
-      print('✅ Total marker yang akan ditampilkan: ${rambuData.length}');
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (rambuData.isNotEmpty) {
-          Future.delayed(const Duration(milliseconds: 800), () {
-            _fitBoundsToMarkers();
-          });
-        }
-      });
+        });
+      }
     } catch (e) {
-      print('❌ Error loading JSON: $e');
+      print('❌ Error loading Data Maps: $e');
     }
   }
 
-  // Helper function untuk cos (karena dart:math perlu diimport)
-  double cos(double radians) {
+  double _cos(double radians) {
     return (radians * radians * radians * radians / 24 - 
             radians * radians / 2 + 1);
   }
 
-  // Helper function untuk sin
-  double sin(double radians) {
+  double _sin(double radians) {
     return radians - (radians * radians * radians) / 6;
   }
 
-  Future<void> loadEdukasiRambu() async {
-    try {
-      final result = await ApiService.getRambuList(); 
-      if (result['success']) {
-        setState(() {
-          _edukasiRambuList = List<Map<String, dynamic>>.from(result['data']);
-        });
-      }
-    } catch (e) {
-      print('Error loading edukasi rambu: $e');
-    }
-  }
-
-  String _getEdukasiImageUrl(String rambuName) {
-    final match = _edukasiRambuList.firstWhere(
-      (r) => r['nama'].toString().toLowerCase() == rambuName.toLowerCase(),
-      orElse: () => {},
-    );
-    if (match.isNotEmpty && match['gambar_url'] != null) {
-      return match['gambar_url'].toString().startsWith('http')
-          ? match['gambar_url']
-          : '${ApiService.baseUrl}${match['gambar_url']}';
-    }
-    return '';
-  }
-
   void _showMarkerInfo(Map<String, dynamic> rambu) {
-    final gambarUrl = _getEdukasiImageUrl(rambu['nama']);
     setState(() {
-      _selectedRambu = {
-        ...rambu,
-        'gambar_url': gambarUrl.isNotEmpty ? gambarUrl : null,
-      };
+      _selectedRambu = rambu;
     });
   }
 
@@ -200,105 +158,43 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
     _mapController.fitCamera(CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)));
   }
 
-  void _searchLocation(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        filteredLocations = [];
-        _showSearchResults = false;
-        _isSearching = false;
-      });
-      return;
-    }
-    setState(() {
-      _isSearching = true;
-      _showSearchResults = true;
-    });
-
-    try {
-      final localResults = batamLocations.where((location) {
-        final nama = location['nama'].toString().toLowerCase();
-        final kecamatan = location['kecamatan'].toString().toLowerCase();
-        return nama.contains(query.toLowerCase()) || kecamatan.contains(query.toLowerCase());
-      }).toList();
-
-      final nominatimUrl = Uri.parse(
-          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query + ' Batam')}&format=json&limit=10&countrycodes=id');
-
-      final response = await http.get(nominatimUrl, headers: {'User-Agent': 'BatamRambuApp/1.0'});
-
-      if (response.statusCode == 200) {
-        final List<dynamic> results = jsonDecode(response.body);
-        final nominatimResults = results.map((place) {
-          return {
-            'nama': place['display_name'].toString().split(',')[0],
-            'alamat': place['display_name'],
-            'lat': double.parse(place['lat']),
-            'lng': double.parse(place['lon']),
-            'type': 'search',
-          };
-        }).toList();
-
-        setState(() {
-          filteredLocations = [...localResults, ...nominatimResults];
-          _isSearching = false;
-        });
-      } else {
-        setState(() {
-          filteredLocations = localResults;
-          _isSearching = false;
-        });
-      }
-    } catch (e) {
-      print('Search error: $e');
-      setState(() {
-        filteredLocations = batamLocations;
-        _isSearching = false;
-      });
-    }
-  }
-
-  void _moveToLocation(Map<String, dynamic> location) {
-    _mapController.move(LatLng(location['lat'], location['lng']), 15);
-    setState(() {
-      _showSearchResults = false;
-      _searchController.clear();
-    });
-  }
-
-  void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
-  void _zoomOut() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
-
   Color _getColorFromName(String colorName) {
     switch (colorName) {
-      case 'red':
-        return Colors.red;
-      case 'blue':
-        return Colors.blue;
-      case 'orange':
-        return Colors.orange;
-      case 'green':
-        return Colors.green;
-      default:
-        return Colors.grey;
+      case 'red': return Colors.red;
+      case 'blue': return Colors.blue;
+      case 'orange': return Colors.orange;
+      case 'green': return Colors.green;
+      default: return Colors.grey;
     }
   }
 
-  @override
+  void _showSearchBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SearchBottomSheet(
+        onLocationSelected: (location) {
+          _mapController.move(LatLng(location['lat'], location['lng']), 15);
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+@override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Jelajahi Peta Rambu Batam (${rambuData.length})'),
-        backgroundColor: const Color(0xFFD6D588),
-        centerTitle: true,
-      ),
+      // Pastikan body extend di belakang navbar jika parent scaffold pakai extendBody
       body: _mapReady
           ? Stack(
               children: [
+                // 1. PETA (Layer paling bawah)
                 FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    initialCenter: LatLng(1.0807, 104.0065),
-                    initialZoom: 13,
+                    initialCenter: _defaultLocation,
+                    initialZoom: 12,
                     minZoom: 10,
                     maxZoom: 18,
                     onTap: (_, __) => _closeMarkerInfo(),
@@ -336,233 +232,444 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                   ],
                 ),
 
-                // Search bar
+                // 2. TOMBOL ZOOM & LOKASI (Sebelah Kanan)
                 Positioned(
-                  top: 16,
-                  left: 16,
                   right: 16,
-                  child: Material(
-                    elevation: 4,
-                    borderRadius: BorderRadius.circular(8),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Cari kelurahan/daerah di Batam...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _searchLocation('');
-                                },
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  // 🔥 FIX 1: Naikkan posisi tombol ini agar tidak terlalu mepet ke komponen bawah
+                  bottom: 230, 
+                  child: Column(
+                    children: [
+                      _buildFloatingButton(
+                        icon: Icons.add,
+                        onPressed: () {
+                          _mapController.move(
+                            _mapController.camera.center,
+                            _mapController.camera.zoom + 1,
+                          );
+                        },
                       ),
-                      onChanged: _searchLocation,
-                    ),
+                      const SizedBox(height: 12),
+                      _buildFloatingButton(
+                        icon: Icons.remove,
+                        onPressed: () {
+                          _mapController.move(
+                            _mapController.camera.center,
+                            _mapController.camera.zoom - 1,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildFloatingButton(
+                        icon: Icons.my_location,
+                        onPressed: () {
+                          _fitBoundsToMarkers();
+                        },
+                      ),
+                    ],
                   ),
                 ),
 
-                // Search results
-                if (_showSearchResults && (filteredLocations.isNotEmpty || _isSearching))
+                // 3. KARTU DETAIL (Muncul saat marker diklik)
+                if (_selectedRambu != null)
                   Positioned(
-                    top: 72,
-                    left: 16,
-                    right: 16,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        constraints: const BoxConstraints(maxHeight: 300),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: _isSearching
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Center(child: CircularProgressIndicator()),
-                              )
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                itemCount: filteredLocations.length,
-                                separatorBuilder: (context, index) => const Divider(height: 1),
-                                itemBuilder: (context, index) {
-                                  final location = filteredLocations[index];
-                                  final isLocal = location['type'] != 'search';
-                                  return ListTile(
-                                    leading: Icon(
-                                      isLocal ? Icons.place : Icons.search,
-                                      color: isLocal ? Colors.blue : Colors.orange,
-                                      size: 20,
-                                    ),
-                                    title: Text(
-                                      location['nama'],
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 14,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    subtitle: Text(
-                                      isLocal ? 'Kec. ${location['kecamatan']}' : location['alamat'] ?? '',
-                                      style: const TextStyle(fontSize: 12),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    dense: true,
-                                    onTap: () => _moveToLocation(location),
-                                  );
-                                },
+                    left: 0,
+                    right: 0,
+                    // 🔥 FIX 2: Ubah bottom jadi 85 agar naik di atas Navbar
+                    bottom: 85, 
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, -4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD6D588).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.location_on,
+                                  color: _getColorFromName(_selectedRambu!['colorName']),
+                                  size: 24,
+                                ),
                               ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Lokasi Rambu',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _selectedRambu!['nama'] ?? 'Rambu Lalu Lintas',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      _selectedRambu!['kategori'] ?? '-',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                        fontStyle: FontStyle.italic
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: _closeMarkerInfo,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD6D588).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.map, size: 18, color: Colors.grey),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Lat: ${_selectedRambu!['original_lat'].toStringAsFixed(5)}\nLng: ${_selectedRambu!['original_lng'].toStringAsFixed(5)}',
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => DetailRambuScreen(
+                                      rambu: _selectedRambu!,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD6D588),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Lihat Detail Rambu',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
 
-                // Marker Info Card
-                if (_selectedRambu != null)
+                // 4. TOMBOL CARI (Jika tidak ada marker dipilih)
+                if (_selectedRambu == null)
                   Positioned(
-                    top: 80,
-                    left: MediaQuery.of(context).size.width * 0.15,
-                    right: MediaQuery.of(context).size.width * 0.15,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(6),
+                    left: 16,
+                    right: 16,
+                    // 🔥 FIX 3: Ubah bottom dari 16 menjadi 100 agar naik di atas Navbar
+                    bottom: 100, 
+                    child: GestureDetector(
+                      onTap: _showSearchBottomSheet,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, -4),
+                            ),
+                          ],
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
+                        child: Row(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _selectedRambu!['nama'] ?? 'Rambu Lalu Lintas',
-                                    style: const TextStyle(
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD6D588).withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.search, size: 24),
+                            ),
+                            const SizedBox(width: 16),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Cari lokasi',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Temukan titik rambu di Batam',
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                InkWell(
-                                  onTap: _closeMarkerInfo,
-                                  child: const Icon(Icons.close, size: 16),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Lat: ${_selectedRambu!['original_lat']?.toStringAsFixed(5) ?? _selectedRambu!['lat'].toStringAsFixed(5)}',
-                                    style: const TextStyle(color: Colors.grey, fontSize: 10),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    'Lng: ${_selectedRambu!['original_lng']?.toStringAsFixed(5) ?? _selectedRambu!['lng'].toStringAsFixed(5)}',
-                                    style: const TextStyle(color: Colors.grey, fontSize: 10),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 28,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DetailRambuScreen(
-                                        rambu: _selectedRambu!,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFD6D588),
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Selengkapnya',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                ),
+                                ],
                               ),
                             ),
+                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                           ],
                         ),
                       ),
                     ),
                   ),
-
-                // Zoom & Location Buttons
-                Positioned(
-                  right: 16,
-                  bottom: 100,
-                  child: Column(
-                    children: [
-                      FloatingActionButton(
-                        heroTag: 'zoom_in',
-                        mini: true,
-                        backgroundColor: Colors.white,
-                        onPressed: _zoomIn,
-                        child: const Icon(Icons.add, color: Colors.black87),
-                      ),
-                      const SizedBox(height: 8),
-                      FloatingActionButton(
-                        heroTag: 'zoom_out',
-                        mini: true,
-                        backgroundColor: Colors.white,
-                        onPressed: _zoomOut,
-                        child: const Icon(Icons.remove, color: Colors.black87),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  right: 16,
-                  bottom: 32,
-                  child: FloatingActionButton(
-                    heroTag: 'center_batam',
-                    mini: true,
-                    backgroundColor: Colors.white,
-                    onPressed: () {
-                      _mapController.move(LatLng(1.0807, 104.0065), 13);
-                    },
-                    child: const Icon(Icons.my_location, color: Colors.black87),
-                  ),
-                ),
               ],
             )
           : const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildFloatingButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon),
+        onPressed: onPressed,
+        color: Colors.black87,
+      ),
+    );
+  }
+}
+
+// --- SEARCH BOTTOM SHEET ---
+class SearchBottomSheet extends StatefulWidget {
+  final Function(Map<String, dynamic>) onLocationSelected;
+
+  const SearchBottomSheet({
+    super.key,
+    required this.onLocationSelected,
+  });
+
+  @override
+  State<SearchBottomSheet> createState() => _SearchBottomSheetState();
+}
+
+class _SearchBottomSheetState extends State<SearchBottomSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> filteredLocations = [];
+  bool _isSearching = false;
+
+  final List<Map<String, dynamic>> batamLocations = [
+    {'nama': 'Batam Centre', 'kecamatan': 'Batam Kota', 'lat': 1.1295, 'lng': 104.0538, 'type': 'pusat'},
+    {'nama': 'Nagoya Hill', 'kecamatan': 'Lubuk Baja', 'lat': 1.1458, 'lng': 104.0135, 'type': 'mall'},
+    {'nama': 'Bandara Hang Nadim', 'kecamatan': 'Nongsa', 'lat': 1.1205, 'lng': 104.1185, 'type': 'bandara'},
+    {'nama': 'Jembatan Barelang', 'kecamatan': 'Galang', 'lat': 0.9825, 'lng': 104.0410, 'type': 'wisata'},
+    {'nama': 'Harbour Bay', 'kecamatan': 'Batu Ampar', 'lat': 1.1540, 'lng': 103.9980, 'type': 'pelabuhan'},
+  ];
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _searchLocation(String query) async {
+    // ... (Logika pencarian sama seperti sebelumnya, tidak berubah) ...
+    if (query.isEmpty) {
+      setState(() {
+        filteredLocations = batamLocations;
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    try {
+      final localResults = batamLocations.where((location) {
+        final nama = location['nama'].toString().toLowerCase();
+        final kecamatan = location['kecamatan'].toString().toLowerCase();
+        return nama.contains(query.toLowerCase()) || kecamatan.contains(query.toLowerCase());
+      }).toList();
+
+      final nominatimUrl = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent('$query Batam')}&format=json&limit=5&countrycodes=id');
+
+      final response = await http.get(nominatimUrl, headers: {'User-Agent': 'BatamRambuApp/1.0'});
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = jsonDecode(response.body);
+        final nominatimResults = results.map((place) {
+          return {
+            'nama': place['display_name'].toString().split(',')[0],
+            'alamat': place['display_name'],
+            'lat': double.parse(place['lat']),
+            'lng': double.parse(place['lon']),
+            'type': 'search',
+          };
+        }).toList();
+
+        setState(() {
+          filteredLocations = [...localResults, ...nominatimResults];
+          _isSearching = false;
+        });
+      } else {
+        setState(() {
+          filteredLocations = localResults;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        filteredLocations = batamLocations;
+        _isSearching = false;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    filteredLocations = batamLocations;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: _searchController,
+              
+              // 🔥 PERBAIKAN DI SINI:
+              // Ubah autofocus menjadi false agar keyboard tidak langsung muncul
+              autofocus: false, 
+              
+              decoration: InputDecoration(
+                hintText: 'Cari lokasi (cth: Nagoya, Bandara)...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.grey[100],
+              ),
+              onChanged: _searchLocation,
+            ),
+          ),
+          Expanded(
+            child: _isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredLocations.length,
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final location = filteredLocations[index];
+                      final type = location['type'];
+                      IconData iconData = Icons.place;
+                      Color iconColor = Colors.grey;
+
+                      if (type == 'pusat') { iconData = Icons.business; iconColor = Colors.blue; }
+                      else if (type == 'mall') { iconData = Icons.shopping_bag; iconColor = Colors.purple; }
+                      else if (type == 'bandara') { iconData = Icons.flight; iconColor = Colors.orange; }
+                      else if (type == 'wisata') { iconData = Icons.camera_alt; iconColor = Colors.green; }
+                      else if (type == 'pelabuhan') { iconData = Icons.directions_boat; iconColor = Colors.blueAccent; }
+
+                      return ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD6D588).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(iconData, color: iconColor),
+                        ),
+                        title: Text(
+                          location['nama'],
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          location['type'] == 'search' ? (location['alamat'] ?? '') : 'Kec. ${location['kecamatan']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => widget.onLocationSelected(location),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

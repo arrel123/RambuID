@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:async'; // Diperlukan untuk Timer
 import '../services/api_service.dart';
 import '../l10n/app_localizations.dart';
 
@@ -61,10 +62,72 @@ class _EditProfilPageState extends State<EditProfilPage> {
     super.dispose();
   }
 
+  // --- FUNGSI POP-UP GAYA LOGIN PAGE (PENGGANTI ALERT HIJAU) ---
+  void _showSuccessDialog(Map<String, dynamic> updatedData) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User tidak bisa klik luar
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          // Padding konten disesuaikan agar mirip Login Page
+          contentPadding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Icon Checklis Biru
+              const Icon(
+                Icons.check_circle_outline,
+                color: Color(0xFF64B5F6), // Warna Biru Muda
+                size: 60,
+              ),
+              const SizedBox(height: 16),
+              
+              // 2. Judul Besar
+              const Text(
+                'Berhasil Disimpan', // Teks Pengganti
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF555555), // Abu Gelap
+                ),
+              ),
+              const SizedBox(height: 10),
+              
+              // 3. Subtitle
+              const Text(
+                'Mengarahkan kembali ke profil...',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF777777), // Abu Terang
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Timer 2 Detik: Tutup Pop-up -> Kembali ke Halaman Sebelumnya
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        // 1. Hilangkan Pop-up
+        Navigator.of(context).pop(); 
+        
+        // 2. Kembali ke menu sebelumnya membawa data baru
+        Navigator.pop(context, updatedData);
+      }
+    });
+  }
+
   Future<void> _saveProfile() async {
     final l10n = AppLocalizations.of(context);
     
-    // Validate
+    // Validasi Input
     if (_namaController.text.trim().isEmpty) {
       _showSnackBar(l10n.nameRequired, Colors.red);
       return;
@@ -85,7 +148,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
       return;
     }
 
-    // Validate passwords if provided
+    // Validasi Password
     if (_passwordController.text.trim().isNotEmpty ||
         _confirmPasswordController.text.trim().isNotEmpty) {
       if (_passwordController.text.trim().isEmpty) {
@@ -105,12 +168,12 @@ class _EditProfilPageState extends State<EditProfilPage> {
       }
     }
 
-    // Start loading
+    // Mulai Loading
     setState(() {
       _isLoading = true;
     });
 
-    // Call API
+    // Panggil API
     final result = await ApiService.updateUserProfile(
       userId: widget.userId,
       namaLengkap: _namaController.text.trim(),
@@ -129,17 +192,21 @@ class _EditProfilPageState extends State<EditProfilPage> {
     if (result['success']) {
       final data = result['data'];
       
-      // Return updated data
+      // Siapkan data untuk dikirim balik
+      final updatedData = {
+        'nama': data['nama_lengkap'] ?? _namaController.text.trim(),
+        'email': data['username'] ?? _emailController.text.trim(),
+        'alamat': data['alamat'] ?? _alamatController.text.trim(),
+        'password': _passwordController.text.trim(),
+        'profileImage': data['profile_image'],
+      };
+
       if (mounted) {
-        Navigator.pop(context, {
-          'nama': data['nama_lengkap'] ?? _namaController.text.trim(),
-          'email': data['username'] ?? _emailController.text.trim(),
-          'alamat': data['alamat'] ?? _alamatController.text.trim(),
-          'password': _passwordController.text.trim(),
-          'profileImage': data['profile_image'],
-        });
+        // TAMPILKAN POP-UP (Tanpa SnackBar Hijau di sini)
+        _showSuccessDialog(updatedData);
       }
     } else {
+      // Jika Gagal, tetap pakai SnackBar Merah
       _showSnackBar(result['message'] ?? l10n.profileUpdateFailed, Colors.red);
     }
   }

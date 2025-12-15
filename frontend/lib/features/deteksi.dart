@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart'; // <--- TAMBAHAN PENTING
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import '../services/api_service.dart';      // Import API Service
 import '../services/riwayat_service.dart';  // Import Riwayat Service
@@ -35,7 +35,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Kita panggil fungsi init kamera yang sudah aman
     _initializeCamera();
   }
 
@@ -59,42 +58,53 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     }
   }
 
-  // --- PERBAIKAN LOGIKA INISIALISASI KAMERA ---
+  // --- FUNGSI INISIALISASI KAMERA YANG SUDAH DIOPTIMALKAN ---
   Future<void> _initializeCamera() async {
     // 1. Minta Izin Kamera Terlebih Dahulu
     var status = await Permission.camera.status;
     if (!status.isGranted) {
       status = await Permission.camera.request();
       if (!status.isGranted) {
-        // Jika user menolak, hentikan proses agar tidak crash
-        return; 
+        return; // Jika ditolak, stop.
       }
     }
 
-    // 2. Jika izin didapat, baru jalankan logika kamera
     try {
       _cameras = await availableCameras();
       if (_cameras!.isEmpty) {
         _showErrorDialog('Tidak ada kamera tersedia');
         return;
       }
+      
+      // Pastikan index kamera valid
       if (_selectedCameraIndex >= _cameras!.length) {
         _selectedCameraIndex = 0;
       }
+
+      // 2. Setting Controller dengan Resolusi MEDIUM (Agar Cepat/Tidak Lelet)
       _cameraController = CameraController(
         _cameras![_selectedCameraIndex],
-        ResolutionPreset.medium,
+        ResolutionPreset.medium, // Ubah dari max/high ke medium (720p) cukup untuk AI
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        imageFormatGroup: Platform.isAndroid 
+            ? ImageFormatGroup.jpeg 
+            : ImageFormatGroup.bgra8888, 
       );
+
       await _cameraController!.initialize();
+      
+      // 3. Matikan Flash Secara Default (Agar tidak otomatis nyala)
+      if (_cameraController!.value.flashMode != FlashMode.off) {
+        await _cameraController!.setFlashMode(FlashMode.off);
+      }
+
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
+          _isFlashOn = false; // Reset status UI flash
         });
       }
     } catch (e) {
-      // Jangan tampilkan dialog error jika errornya karena dispose/navigasi
       if (mounted) {
         _showErrorDialog('Gagal menginisialisasi kamera: $e');
       }
@@ -110,24 +120,26 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       _isCameraInitialized = false;
       _isFlashOn = false;
     });
+    
     await _cameraController?.dispose();
     _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras!.length;
     await _initializeCamera();
   }
 
+  // --- LOGIKA FLASH MANUAL ---
   Future<void> _toggleFlash() async {
-    if (_cameraController == null) return;
-    final cameraDescription = _cameras![_selectedCameraIndex];
-    if (cameraDescription.lensDirection == CameraLensDirection.front) {
-      _showErrorDialog('Flash tidak tersedia di kamera depan');
-      return;
-    }
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    
     try {
       if (_isFlashOn) {
+        // Matikan Flash
         await _cameraController!.setFlashMode(FlashMode.off);
       } else {
+        // Nyalakan Flash (Torch = Senter Terus Nyala, Always = Nyala pas jepret)
+        // Disarankan Torch agar user bisa melihat objek gelap sebelum difoto
         await _cameraController!.setFlashMode(FlashMode.torch);
       }
+      
       setState(() {
         _isFlashOn = !_isFlashOn;
       });
@@ -136,14 +148,12 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     }
   }
 
-  // --- LOGIKA UTAMA: PROSES GAMBAR DENGAN AI ---
   Future<void> _processImageWithAI(XFile image) async {
     setState(() {
       _isProcessing = true;
     });
 
     try {
-      // 1. Panggil API Backend
       final result = await ApiService.detectRambu(image);
 
       if (result['success']) {
@@ -153,42 +163,35 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
           _isTerdeteksi = data['terdeteksi'] ?? false;
           
           if (_isTerdeteksi) {
-            // Jika Terdeteksi: Ambil data dari Backend
             _hasilNama = data['nama_rambu'] ?? "Tidak Diketahui";
-            _hasilDeskripsi = data['deskripsi'] ?? "Belum ada deskripsi di database.";
-            
-            // Format confidence (misal: 0.85 -> 85.0%)
+            _hasilDeskripsi = data['deskripsi'] ?? "Belum ada deskripsi.";
             double conf = data['confidence'] ?? 0.0;
             _hasilConfidence = "${(conf * 100).toStringAsFixed(1)}%";
 
-            // 2. SIMPAN KE RIWAYAT
-            RiwayatService.addRiwayat(
-              _hasilNama, 
-              data['kategori'] ?? 'Rambu Lalu Lintas'
-            );
+            // Simpan ke Riwayat jika file gambar masih ada
+            if (_capturedImage != null) {
+              RiwayatService.addRiwayat(
+                _hasilNama, 
+                data['kategori'] ?? 'Rambu Lalu Lintas',
+                _capturedImage!.path 
+              );
+            }
 
           } else {
-            // Jika Gagal Deteksi
             _hasilNama = "Tidak Terdeteksi";
-            _hasilDeskripsi = data['pesan'] ?? "Objek tidak dikenali atau confidence rendah.";
+            _hasilDeskripsi = data['pesan'] ?? "Objek tidak dikenali.";
             _hasilConfidence = "0%";
           }
         });
 
-        if (mounted) {
-          _showResultDialog(); // Tampilkan Pop-up
-        }
+        if (mounted) _showResultDialog();
       } else {
         _showErrorDialog(result['message']);
       }
     } catch (e) {
       _showErrorDialog('Error aplikasi: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() { _isProcessing = false; });
     }
   }
 
@@ -197,43 +200,47 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     if (_isProcessing) return;
 
     try {
+      // Matikan Flash sementara saat jepret jika mode torch aktif (opsional, tergantung selera)
+      // Tapi untuk AI biasanya mode Torch lebih stabil pencahayaannya daripada Flash kilat.
+      
       final XFile image = await _cameraController!.takePicture();
+      
+      // Matikan flash otomatis setelah foto diambil (Hemat baterai)
+      if (_isFlashOn) {
+        await _cameraController!.setFlashMode(FlashMode.off);
+        setState(() { _isFlashOn = false; });
+      }
+
       setState(() {
         _capturedImage = File(image.path);
       });
-      await _processImageWithAI(image); // Kirim ke AI
+      await _processImageWithAI(image); 
     } catch (e) {
       _showErrorDialog('Gagal mengambil gambar: $e');
       setState(() { _isProcessing = false; });
     }
   }
 
-  // --- PERBAIKAN LOGIKA BUKA GALERI ---
   Future<void> _pickImageFromGallery() async {
-    // Cek izin storage untuk Android lama, Android baru biasanya ditangani ImagePicker
     var status = await Permission.storage.status;
-    
-    // Jika belum diizinkan dan bukan Android 13+ (Android 13+ pakai Photos)
-    // Kita coba request storage dulu untuk amannya
     if (!status.isGranted) {
        await Permission.storage.request();
-       // Kita tidak force return di sini karena ImagePicker punya penanganan sendiri
     }
 
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 85, // Kompres sedikit agar upload cepat
       );
 
       if (image != null) {
         setState(() {
           _capturedImage = File(image.path);
         });
-        await _processImageWithAI(image); // Kirim ke AI
+        await _processImageWithAI(image);
       }
     } catch (e) {
-      _showErrorDialog('Gagal memilih gambar dari galeri. Pastikan izin penyimpanan aktif.');
+      _showErrorDialog('Gagal memilih gambar dari galeri.');
       setState(() { _isProcessing = false; });
     }
   }
@@ -254,7 +261,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     );
   }
 
-  // --- POP-UP HASIL DETEKSI ---
   void _showResultDialog() {
     showDialog(
       context: context,
@@ -266,68 +272,70 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
           'Hasil Deteksi',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_capturedImage != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _capturedImage!,
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            const SizedBox(height: 16),
-            
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Rambu Terdeteksi:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                if (_isTerdeteksi)
-                  Text(
-                    _hasilConfidence,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+        content: SingleChildScrollView( // Tambahkan scroll agar aman di layar kecil
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_capturedImage != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _capturedImage!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _isTerdeteksi ? const Color(0xFFD6D588) : Colors.red[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _hasilNama, 
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF333333),
                 ),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 16),
+              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Rambu Terdeteksi:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  if (_isTerdeteksi)
+                    Text(
+                      _hasilConfidence,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-            const Text(
-              'Deskripsi:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            
-            Text(
-              _hasilDeskripsi, 
-              style: const TextStyle(fontSize: 14, height: 1.5),
-            ),
-          ],
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isTerdeteksi ? const Color(0xFFD6D588) : Colors.red[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _hasilNama, 
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF333333),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              const Text(
+                'Deskripsi:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              
+              Text(
+                _hasilDeskripsi, 
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -415,7 +423,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -430,7 +438,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
   Widget _buildCameraPreview() {
     if (!_isCameraInitialized || _cameraController == null) {
-      // Tampilkan tombol "Izinkan Kamera" jika permission belum diberikan, atau loading
       return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)));
     }
     return LayoutBuilder(
@@ -473,14 +480,14 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
   Widget _buildFlipCameraButton() {
     return Container(
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
       child: IconButton(onPressed: _flipCamera, icon: const Icon(Icons.flip_camera_android, color: Colors.white, size: 28), padding: const EdgeInsets.all(12)),
     );
   }
 
   Widget _buildProcessingOverlay() {
     return Container(
-      color: Colors.black.withValues(alpha: 0.7),
+      color: Colors.black.withOpacity(0.7),
       child: const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)), SizedBox(height: 16), Text('Mendeteksi rambu...', style: TextStyle(color: Colors.white, fontSize: 16))])),
     );
   }
@@ -488,7 +495,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   Widget _buildInstructions() {
     return Positioned(
       bottom: 20, left: 0, right: 0,
-      child: Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20)), child: const Text('Arahkan kamera ke rambu lalu lintas', style: TextStyle(color: Colors.white, fontSize: 14), textAlign: TextAlign.center))),
+      child: Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)), child: const Text('Arahkan kamera ke rambu lalu lintas', style: TextStyle(color: Colors.white, fontSize: 14), textAlign: TextAlign.center))),
     );
   }
 
@@ -508,7 +515,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
   Widget _buildActionButton({required IconData icon, required VoidCallback onPressed, bool isActive = false}) {
     return Container(
-      decoration: BoxDecoration(color: isActive ? const Color(0xFFD6D588) : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(color: isActive ? const Color(0xFFD6D588) : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))]),
       child: IconButton(onPressed: onPressed, icon: Icon(icon, size: 28, color: isActive ? Colors.white : Colors.black), padding: const EdgeInsets.all(16)),
     );
   }
@@ -516,7 +523,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   Widget _buildCaptureButton() {
     return GestureDetector(
       onTap: _isProcessing ? null : _captureAndDetect,
-      child: Container(width: 70, height: 70, decoration: BoxDecoration(color: const Color(0xFFD6D588), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))]), child: const Icon(Icons.search, size: 36, color: Colors.white)),
+      child: Container(width: 70, height: 70, decoration: BoxDecoration(color: const Color(0xFFD6D588), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]), child: const Icon(Icons.search, size: 36, color: Colors.white)),
     );
   }
 }

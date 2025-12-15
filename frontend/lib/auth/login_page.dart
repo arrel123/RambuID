@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart'; // Wajib ada untuk fitur 'Ingat Saya'
 import '../services/api_service.dart';
 
-// Custom Clipper untuk membuat lengkungan cembung
+// --- Custom Clipper (Tidak Berubah) ---
 class ConvexClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     Path path = Path();
-    path.lineTo(0, size.height - 40);
-
-    // Membuat kurva cembung (melengkung ke bawah)
+    path.lineTo(0, size.height - 50);
     path.quadraticBezierTo(
-      size.width / 2,
-      size.height, // Control point (titik tengah melengkung ke bawah)
-      size.width,
-      size.height - 40, // End point
+      size.width / 2, size.height,
+      size.width, size.height - 50
     );
-
     path.lineTo(size.width, 0);
     path.close();
     return path;
   }
-
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
@@ -40,395 +36,296 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserCredentials(); // Cek apakah ada data tersimpan saat aplikasi dibuka
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  // --- LOGIKA REMEMBER ME (LOAD DATA) ---
+  Future<void> _loadUserCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _rememberMe = prefs.getBool('remember_me') ?? false;
+      if (_rememberMe) {
+        _emailController.text = prefs.getString('saved_email') ?? '';
+        _passwordController.text = prefs.getString('saved_password') ?? '';
+      }
+    });
+  }
+
+  // --- DIALOG SUKSES ---
+  void _showSuccessDialog(bool isAdmin, int userId, String username) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Color(0xFF64B5F6), size: 64),
+              const SizedBox(height: 16),
+              const Text(
+                'Login Berhasil', 
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isAdmin ? 'Selamat datang kembali, Admin!' : 'Selamat datang, $username!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Delay 2 detik sebelum pindah halaman
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Tutup dialog
+        if (isAdmin) {
+          Navigator.pushReplacementNamed(context, '/admin/dashboard_view');
+        } else {
+          // Kirim userId dan username yang valid ke Home
+          Navigator.pushReplacementNamed(
+            context, 
+            '/home',
+            arguments: {'userId': userId, 'username': username},
+          );
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final Size screenSize = MediaQuery.of(context).size;
+    final double headerHeight = screenSize.height * 0.35; 
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header dengan background kuning dan lengkungan cembung
-              ClipPath(
+      backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: false, 
+      body: SizedBox(
+        width: double.infinity,
+        height: screenSize.height,
+        child: Stack(
+          children: [
+            // --- HEADER BACKGROUND ---
+            Positioned(
+              top: 0, left: 0, right: 0, height: headerHeight,
+              child: ClipPath(
                 clipper: ConvexClipper(),
                 child: Container(
-                  width: double.infinity,
                   color: const Color(0xFFD6D588),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 40),
-                      // Logo
-                      Image.asset(
-                        'assets/images/logo_rambuid.png',
-                        height: 120,
-                        width: 120,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                        child: Image.asset('assets/images/logo_rambuid.png', height: 80, width: 80),
                       ),
-                      const SizedBox(height: 20),
-                      // Judul
-                      const Text(
-                        'Selamat Datang',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        'Di RambuID',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF555555),
-                        ),
-                      ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 12),
+                      const Text('Selamat Datang', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+                      const Text('Di RambuID', style: TextStyle(fontSize: 16, color: Color(0xFF555555))),
                     ],
                   ),
                 ),
               ),
+            ),
 
-              // Form Section
-              Padding(
-                padding: const EdgeInsets.all(24.0),
+            // --- FORM SECTION ---
+            Positioned(
+              top: headerHeight - 20, left: 0, right: 0, bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 30),
-
-                    // Email Field
-                    const Text(
-                      'EMAIL',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF555555),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                    
+                    // --- INPUTS ---
+                    _buildLabel('EMAIL'),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        hintText: 'example@gmail.com',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFFAAAAAA),
-                          fontSize: 14,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFDDDDDD),
-                            width: 1.5,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFDDDDDD),
-                            width: 1.5,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFD6D588),
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Password Field
-                    const Text(
-                      'PASSWORD',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF555555),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                    _buildTextField(controller: _emailController, hint: 'user@gmail.com', icon: Icons.email_outlined),
+                    
+                    const SizedBox(height: 20),
+                    
+                    _buildLabel('KATA SANDI'),
                     const SizedBox(height: 8),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        hintText: '••••••••••',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFFAAAAAA),
-                          fontSize: 14,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: const Color(0xFF888888),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFDDDDDD),
-                            width: 1.5,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFDDDDDD),
-                            width: 1.5,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFD6D588),
-                            width: 2,
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
+                    _buildTextField(controller: _passwordController, hint: '••••••••••', icon: Icons.lock_outline, isPassword: true),
 
-                    const SizedBox(height: 16),
-
-                    // Remember Me
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: Checkbox(
-                            value: _rememberMe,
-                            onChanged: (value) {
-                              setState(() {
-                                _rememberMe = value ?? false;
-                              });
-                            },
-                            activeColor: const Color(0xFFD6D588),
-                            side: const BorderSide(
-                              color: Color(0xFF888888),
-                              width: 1.5,
+                    // --- INGAT SAYA ---
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 24, height: 24,
+                            child: Checkbox(
+                              value: _rememberMe,
+                              activeColor: const Color(0xFFD6D588),
+                              onChanged: (val) => setState(() => _rememberMe = val!),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Ingat saya',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          const Text('Ingat saya', style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
                     ),
 
-                    const SizedBox(height: 100),
+                    const Spacer(), // Dorong ke bawah
 
-                    // Register Link
+                    // --- LINK DAFTAR ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text(
-                          'Belum mempunyai akun? ',
-                          style: TextStyle(
-                            color: Color(0xFF666666),
-                            fontSize: 14,
-                          ),
+                          'Belum punya akun? ',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/register');
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
+                        GestureDetector(
+                          onTap: () => Navigator.pushNamed(context, '/register'),
                           child: const Text(
-                            'DAFTAR',
+                            'Daftar Sekarang!',
                             style: TextStyle(
                               color: Color(0xFFD6D588),
-                              fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ],
                     ),
+                    
+                    const SizedBox(height: 12),
 
-                    const SizedBox(height: 16),
-
-                    // Login Button
+                    // --- TOMBOL MASUK ---
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: 55,
                       child: ElevatedButton(
-                        onPressed: _isLoading
-                            ? null
-                            : () async {
-                                final email = _emailController.text.trim();
-                                final password = _passwordController.text;
-
-                                // Cek field kosong terlebih dahulu
-                                if (email.isEmpty || password.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Email dan password harus diisi!',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                // Set loading state
-                                setState(() {
-                                  _isLoading = true;
-                                });
-
-                                // Panggil API login
-                                final result = await ApiService.login(
-                                  email,
-                                  password,
-                                );
-
-                                // Reset loading state
-                                setState(() {
-                                  _isLoading = false;
-                                });
-
-                                if (result['success']) {
-                                  // Login berhasil
-                                  final data = result['data'];
-                                  final userId = data['user_id'];
-                                  final username = data['username'];
-
-                                  // Cek apakah admin (dummy check - bisa diganti dengan field dari backend)
-                                  final adminEmails = [
-                                    'admin@rambuid.com',
-                                    'admin@gmail.com',
-                                    'admin@rambuid.com'.toLowerCase(),
-                                    'admin@gmail.com'.toLowerCase(),
-                                  ];
-                                  final isAdmin = adminEmails.contains(
-                                    email.toLowerCase(),
-                                  );
-
-                                  // Debug log
-                                  print('🔵 Login: Email = $email');
-                                  print('🔵 Login: UserId = $userId');
-                                  print('🔵 Login: Username = $username');
-                                  print('🔵 Login: isAdmin = $isAdmin');
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        data['message'] ?? 'Login berhasil!',
-                                        style: const TextStyle(
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                      backgroundColor: const Color(0xFF8B9C4A),
-                                    ),
-                                  );
-
-                                  // Navigate berdasarkan role
-                                  if (isAdmin) {
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/admin/dashboard_view',
-                                    );
-                                  } else {
-                                    // 🔹 Pass userId dan username ke HomePage
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      '/home',
-                                      arguments: {
-                                        'userId': userId,
-                                        'username': username,
-                                      },
-                                    );
-                                  }
-                                } else {
-                                  // Login gagal
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        result['message'] ?? 'Login gagal',
-                                      ),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              },
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D588),
                           foregroundColor: const Color(0xFF2C3E50),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          disabledBackgroundColor: const Color(0xFFCCCCCC),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF2C3E50),
-                                  ),
-                                ),
-                              )
+                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black87))
                             : const Text(
-                                'MASUK',
+                                'MASUK', 
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
+                                  fontSize: 16, 
+                                  fontWeight: FontWeight.bold, 
+                                  letterSpacing: 1
+                                )
                               ),
                       ),
                     ),
-
-                    const SizedBox(height: 30),
+                    
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  // --- Widget Helpers ---
+  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon, bool isPassword = false}) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword ? _obscurePassword : false,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.grey[400]),
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        filled: true, fillColor: Colors.grey[50],
+        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[300]!)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD6D588), width: 2)),
+        suffixIcon: isPassword
+            ? IconButton(icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey), onPressed: () => setState(() => _obscurePassword = !_obscurePassword))
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) => Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1));
+
+  // --- LOGIKA LOGIN (DIPERBAIKI UNTUK ID PENGGUNA) ---
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email dan password wajib diisi'), backgroundColor: Colors.red));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    final result = await ApiService.login(email, password);
+    
+    // Simpan ke Remember Me jika opsi dicentang
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setBool('remember_me', true);
+      await prefs.setString('saved_email', email);
+      await prefs.setString('saved_password', password);
+    } else {
+      await prefs.remove('remember_me');
+      await prefs.remove('saved_email');
+      await prefs.remove('saved_password');
+    }
+
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      // 🔥 FIX PENTING: MENANGANI STRUKTUR DATA NESTED (SAMA SEPERTI PROFIL)
+      dynamic data = result['data'];
+
+      // Cek apakah data dibungkus dalam key 'data' atau 'user'
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('data')) {
+           data = data['data']; 
+        } else if (data.containsKey('user')) {
+           data = data['user'];
+        }
+      }
+
+      // Pastikan kita mengambil user_id dengan aman
+      // Backend mungkin mengirim 'user_id' atau hanya 'id'
+      int userId = 0;
+      if (data['user_id'] != null) {
+        userId = (data['user_id'] is int) ? data['user_id'] : int.parse(data['user_id'].toString());
+      } else if (data['id'] != null) {
+        userId = (data['id'] is int) ? data['id'] : int.parse(data['id'].toString());
+      }
+      
+      final username = data['username'] ?? 'User';
+      final isAdmin = ['admin@rambuid.com', 'admin@gmail.com'].contains(email.toLowerCase());
+      
+      if (mounted) _showSuccessDialog(isAdmin, userId, username);
+    } else {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Login Gagal'), backgroundColor: Colors.red));
+    }
   }
 }

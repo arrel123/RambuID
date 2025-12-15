@@ -28,7 +28,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
     AppLocalizations.of(context).translate('category_command'),
   ];
 
-  // Map kategori dari UI ke database
   Map<String, String> get categoryMapping => {
     AppLocalizations.of(context).translate('category_all'): 'Semua',
     AppLocalizations.of(context).translate('category_warning'): 'Peringatan',
@@ -40,10 +39,8 @@ class _EdukasiPageState extends State<EdukasiPage> {
   @override
   void initState() {
     super.initState();
-    // Delay initialization to ensure context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialCategory != null) {
-        // Find the display name for the initial category
         final entry = categoryMapping.entries.firstWhere(
           (e) => e.value == widget.initialCategory,
           orElse: () => MapEntry(tabs.first, 'Semua'),
@@ -91,8 +88,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
 
   List<dynamic> getFilteredData() {
     List<dynamic> filtered = _rambuList;
-
-    // Get database category name from selected tab
     final dbCategory = categoryMapping[selectedTab] ?? 'Semua';
 
     if (dbCategory != 'Semua') {
@@ -129,39 +124,35 @@ class _EdukasiPageState extends State<EdukasiPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-  backgroundColor: const Color(0xFFD6D588),
-  elevation: 0,
-  // ⬅️ TOMBOL BACK (PASTI MUNCUL)
-  leading: IconButton(
-  icon: const Icon(Icons.arrow_back),
-  onPressed: () {
-    Navigator.pushReplacementNamed(
-      context,
-      '/home',
-      arguments: {
-        'userId': 0,
-        'username': '',
-        'initialIndex': 0, // ⬅️ BERANDA
-      },
-    );
-  },
-),
-
-  title: Text(
-    l10n.translate('sign_list'),
-    style: const TextStyle(
-      color: Colors.black,
-      fontSize: 18,
-      fontWeight: FontWeight.w600,
-    ),
-  ),
-
-  iconTheme: const IconThemeData(
-    color: Colors.black, // warna panah
-  ),
-
-  centerTitle: true,
-),
+        backgroundColor: const Color(0xFFD6D588),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacementNamed(
+              context,
+              '/home',
+              arguments: {
+                'userId': 0,
+                'username': '',
+                'initialIndex': 0, // Kembali ke Beranda
+              },
+            );
+          },
+        ),
+        title: Text(
+          l10n.translate('sign_list'),
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        iconTheme: const IconThemeData(
+          color: Colors.black,
+        ),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
           // Tab Bar
@@ -242,7 +233,13 @@ class _EdukasiPageState extends State<EdukasiPage> {
                     : getFilteredData().isEmpty
                         ? Center(child: Text(l10n.translate('data_not_found')))
                         : GridView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            // 🔥 PERBAIKAN: Menambahkan padding bottom 100 agar aman dari navbar
+                            padding: const EdgeInsets.only(
+                              left: 16, 
+                              right: 16, 
+                              top: 0, 
+                              bottom: 100 
+                            ),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
                               crossAxisSpacing: 12,
