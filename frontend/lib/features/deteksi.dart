@@ -154,10 +154,17 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     });
 
     try {
+      debugPrint('📸 Memproses gambar untuk deteksi...');
+      debugPrint('📸 File path: ${image.path}');
+      debugPrint('📸 File name: ${image.name}');
+      
       final result = await ApiService.detectRambu(image);
+      debugPrint('📸 Hasil deteksi: ${result['success']}');
 
       if (result['success']) {
         final data = result['data'];
+        debugPrint('📸 Data terdeteksi: ${data['terdeteksi']}');
+        debugPrint('📸 Nama rambu: ${data['nama_rambu']}');
         
         setState(() {
           _isTerdeteksi = data['terdeteksi'] ?? false;
@@ -181,15 +188,19 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
             _hasilNama = "Tidak Terdeteksi";
             _hasilDeskripsi = data['pesan'] ?? "Objek tidak dikenali.";
             _hasilConfidence = "0%";
+            debugPrint('📸 Tidak ada rambu terdeteksi: ${data['pesan']}');
           }
         });
 
         if (mounted) _showResultDialog();
       } else {
-        _showErrorDialog(result['message']);
+        debugPrint('🔴 Error deteksi: ${result['message']}');
+        _showErrorDialog(result['message'] ?? 'Gagal mendeteksi rambu');
       }
-    } catch (e) {
-      _showErrorDialog('Error aplikasi: $e');
+    } catch (e, stackTrace) {
+      debugPrint('🔴 Exception saat deteksi: $e');
+      debugPrint('🔴 Stack trace: $stackTrace');
+      _showErrorDialog('Error aplikasi: $e\n\nPastikan backend berjalan dan terhubung ke jaringan yang sama.');
     } finally {
       if (mounted) setState(() { _isProcessing = false; });
     }
