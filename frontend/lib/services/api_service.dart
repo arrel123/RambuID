@@ -6,11 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // ===========================================================================
   // KONFIGURASI KONEKSI
-  // ===========================================================================
-  
-  // IP Laptop kamu (Sesuai request)
   static const String _myLaptopIp = '10.29.88.221';
   static const String _port = '8000';
 
@@ -29,9 +25,7 @@ class ApiService {
         'Accept': 'application/json',
       };
 
-  // ===========================================================================
   // FUNGSI UTAMA: USER PROFILE (DIPERBAIKI UNTUK DEBUGGING)
-  // ===========================================================================
 
   static Future<Map<String, dynamic>> getUserProfile(int userId) async {
     try {
@@ -60,9 +54,7 @@ class ApiService {
     }
   }
 
-  // ===========================================================================
   // HELPER GAMBAR (PENTING)
-  // ===========================================================================
   static String getImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
       return 'https://via.placeholder.com/150';
@@ -77,10 +69,6 @@ class ApiService {
     }
     return '$baseUrl$cleanPath';
   }
-
-  // ===========================================================================
-  // SISA FUNGSI LAINNYA (TIDAK BERUBAH DARI KODE ASLI ANDA)
-  // ===========================================================================
 
   static Future<void> testEndpoints() async {
     debugPrint('\n🔍 === TESTING ALL AVAILABLE ENDPOINTS ===');

@@ -235,7 +235,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   Future<void> _pickImageFromGallery() async {
     var status = await Permission.storage.status;
     if (!status.isGranted) {
-       await Permission.storage.request();
+      await Permission.storage.request();
     }
 
     try {

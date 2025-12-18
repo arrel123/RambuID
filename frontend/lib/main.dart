@@ -144,6 +144,7 @@ class _HomePageState extends State<HomePage> {
       body: pages[_selectedIndex],
 
       bottomNavigationBar: CurvedNavigationBar(
+        index: _selectedIndex,
         // ✅ FIX 2: Background transparan agar menyatu dengan body
         backgroundColor: Colors.transparent, 
         
