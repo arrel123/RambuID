@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../services/api_service.dart';
+import '../services/riwayat_service.dart'; // TAMBAHAN: Import Riwayat Service
 import '../l10n/app_localizations.dart';
 
 class DetailRambuScreen extends StatefulWidget {
@@ -20,23 +21,34 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
   void initState() {
     super.initState();
     _initTts();
+    
+    // TAMBAHAN: Otomatis simpan ke riwayat saat user buka detail rambu
+    _saveToRiwayat();
+  }
+
+  // FUNGSI BARU: Simpan ke Riwayat
+  Future<void> _saveToRiwayat() async {
+    try {
+      final nama = widget.rambu['nama'] ?? 'Rambu Tanpa Nama';
+      final kategori = widget.rambu['kategori'] ?? 'Tidak Diketahui';
+      final gambarUrl = _getImageUrl();
+      
+      // Simpan ke riwayat (gambar dari URL bukan file lokal)
+      await RiwayatService.addRiwayat(nama, kategori, gambarUrl);
+      
+      debugPrint('✅ Berhasil menyimpan ke riwayat: $nama');
+    } catch (e) {
+      debugPrint('❌ Gagal menyimpan riwayat: $e');
+    }
   }
 
   void _initTts() async {
     flutterTts = FlutterTts();
     
-    // GABUNGAN: Menggunakan await (Punya Kamu) + QueueMode (Punya Teman)
-    
-    // Menunggu inisialisasi bahasa
     await flutterTts.setLanguage("id-ID");
-    
-    // Menggunakan settingan kamu (0.4) agar lebih jelas seperti Google Translate
     await flutterTts.setSpeechRate(0.4); 
-    
     await flutterTts.setPitch(1.0);
     await flutterTts.setVolume(1.0);
-
-    // Menggunakan fitur temanmu (QueueMode 1) agar suara tidak antri panjang jika tombol ditekan berulang
     await flutterTts.setQueueMode(1); 
 
     flutterTts.setStartHandler(() {
@@ -165,7 +177,6 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                     height: 130,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      // Border dihapus sesuai request kamu agar tidak ada lingkaran merah
                     ),
                     child: ClipOval(
                       child: imageUrl.isNotEmpty

@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 class DbService {
   // === KONFIGURASI SERVER ===
   // Pastikan IP ini sesuai dengan yang ada di api_service.dart atau IP Laptop kamu
-  static const String baseUrl = 'http://10.29.88.221:8000'; 
+  static const String baseUrl = 'http://192.168.1.6:8000'; 
 
   // === DATA CADANGAN (FIXED DATA) ===
   // Diambil dari kodingan Stash kamu.

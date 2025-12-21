@@ -3,9 +3,9 @@ import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
-import '../services/api_service.dart';      // Import API Service
-import '../services/riwayat_service.dart';  // Import Riwayat Service
-import '../profile/riwayat.dart';           // Halaman Riwayat
+import '../services/api_service.dart';
+import '../services/riwayat_service.dart';
+import '../profile/riwayat.dart';
 
 class DeteksiPage extends StatefulWidget {
   const DeteksiPage({super.key});
@@ -24,12 +24,14 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
   int _selectedCameraIndex = 0;
 
-  // --- VARIABEL UNTUK MENAMPUNG HASIL AI ---
+  // TAMBAHAN: Proteksi untuk prevent double capture
+  bool _isCapturing = false;
+  DateTime? _lastCaptureTime;
+
   String _hasilNama = "";
   String _hasilDeskripsi = "";
   String _hasilConfidence = "";
   bool _isTerdeteksi = false;
-  // -----------------------------------------
 
   @override
   void initState() {
@@ -58,14 +60,12 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     }
   }
 
-  // --- FUNGSI INISIALISASI KAMERA YANG SUDAH DIOPTIMALKAN ---
   Future<void> _initializeCamera() async {
-    // 1. Minta Izin Kamera Terlebih Dahulu
     var status = await Permission.camera.status;
     if (!status.isGranted) {
       status = await Permission.camera.request();
       if (!status.isGranted) {
-        return; // Jika ditolak, stop.
+        return;
       }
     }
 
@@ -76,15 +76,13 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
         return;
       }
       
-      // Pastikan index kamera valid
       if (_selectedCameraIndex >= _cameras!.length) {
         _selectedCameraIndex = 0;
       }
 
-      // 2. Setting Controller dengan Resolusi MEDIUM (Agar Cepat/Tidak Lelet)
       _cameraController = CameraController(
         _cameras![_selectedCameraIndex],
-        ResolutionPreset.medium, // Ubah dari max/high ke medium (720p) cukup untuk AI
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid 
             ? ImageFormatGroup.jpeg 
@@ -93,7 +91,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
       await _cameraController!.initialize();
       
-      // 3. Matikan Flash Secara Default (Agar tidak otomatis nyala)
       if (_cameraController!.value.flashMode != FlashMode.off) {
         await _cameraController!.setFlashMode(FlashMode.off);
       }
@@ -101,7 +98,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
-          _isFlashOn = false; // Reset status UI flash
+          _isFlashOn = false;
         });
       }
     } catch (e) {
@@ -126,17 +123,13 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     await _initializeCamera();
   }
 
-  // --- LOGIKA FLASH MANUAL ---
   Future<void> _toggleFlash() async {
     if (_cameraController == null || !_cameraController!.value.isInitialized) return;
     
     try {
       if (_isFlashOn) {
-        // Matikan Flash
         await _cameraController!.setFlashMode(FlashMode.off);
       } else {
-        // Nyalakan Flash (Torch = Senter Terus Nyala, Always = Nyala pas jepret)
-        // Disarankan Torch agar user bisa melihat objek gelap sebelum difoto
         await _cameraController!.setFlashMode(FlashMode.torch);
       }
       
@@ -175,7 +168,6 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
             double conf = data['confidence'] ?? 0.0;
             _hasilConfidence = "${(conf * 100).toStringAsFixed(1)}%";
 
-            // Simpan ke Riwayat jika file gambar masih ada
             if (_capturedImage != null) {
               RiwayatService.addRiwayat(
                 _hasilNama, 
@@ -202,21 +194,63 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       debugPrint('🔴 Stack trace: $stackTrace');
       _showErrorDialog('Error aplikasi: $e\n\nPastikan backend berjalan dan terhubung ke jaringan yang sama.');
     } finally {
-      if (mounted) setState(() { _isProcessing = false; });
+      if (mounted) {
+        setState(() { 
+          _isProcessing = false;
+          _isCapturing = false; // PENTING: Reset flag capturing
+        });
+      }
     }
   }
 
+  // ========== FUNGSI CAPTURE YANG SUDAH DIPERBAIKI ==========
   Future<void> _captureAndDetect() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
-    if (_isProcessing) return;
+    // PROTEKSI 1: Cek kamera siap
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      _showErrorDialog('Kamera belum siap');
+      return;
+    }
+
+    // PROTEKSI 2: Cek apakah sedang processing
+    if (_isProcessing) {
+      debugPrint('⚠️ Masih memproses gambar sebelumnya...');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Tunggu proses deteksi selesai'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    // PROTEKSI 3: Cek apakah sedang capturing (prevent rapid tap)
+    if (_isCapturing) {
+      debugPrint('⚠️ Sedang mengambil gambar...');
+      return;
+    }
+
+    // PROTEKSI 4: Debouncing - minimal 1.5 detik antar capture
+    if (_lastCaptureTime != null) {
+      final timeSinceLastCapture = DateTime.now().difference(_lastCaptureTime!);
+      if (timeSinceLastCapture < const Duration(milliseconds: 1500)) {
+        debugPrint('⚠️ Terlalu cepat! Tunggu ${1500 - timeSinceLastCapture.inMilliseconds}ms');
+        return;
+      }
+    }
 
     try {
-      // Matikan Flash sementara saat jepret jika mode torch aktif (opsional, tergantung selera)
-      // Tapi untuk AI biasanya mode Torch lebih stabil pencahayaannya daripada Flash kilat.
+      // Set flag bahwa sedang capturing
+      setState(() {
+        _isCapturing = true;
+      });
       
+      _lastCaptureTime = DateTime.now();
+      debugPrint('📸 Mulai mengambil gambar...');
+
       final XFile image = await _cameraController!.takePicture();
+      debugPrint('📸 Gambar berhasil diambil: ${image.path}');
       
-      // Matikan flash otomatis setelah foto diambil (Hemat baterai)
+      // Matikan flash setelah foto diambil
       if (_isFlashOn) {
         await _cameraController!.setFlashMode(FlashMode.off);
         setState(() { _isFlashOn = false; });
@@ -225,14 +259,29 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       setState(() {
         _capturedImage = File(image.path);
       });
-      await _processImageWithAI(image); 
+      
+      await _processImageWithAI(image);
+      
     } catch (e) {
+      debugPrint('🔴 Error saat capture: $e');
       _showErrorDialog('Gagal mengambil gambar: $e');
-      setState(() { _isProcessing = false; });
+      
+      // Reset semua flag jika error
+      setState(() { 
+        _isProcessing = false;
+        _isCapturing = false;
+      });
     }
   }
+  // ===========================================================
 
   Future<void> _pickImageFromGallery() async {
+    // Proteksi: Jangan bisa pilih dari galeri kalau masih processing
+    if (_isProcessing || _isCapturing) {
+      _showErrorDialog('Tunggu proses sebelumnya selesai');
+      return;
+    }
+
     var status = await Permission.storage.status;
     if (!status.isGranted) {
       await Permission.storage.request();
@@ -241,7 +290,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85, // Kompres sedikit agar upload cepat
+        imageQuality: 85,
       );
 
       if (image != null) {
@@ -252,7 +301,10 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       }
     } catch (e) {
       _showErrorDialog('Gagal memilih gambar dari galeri.');
-      setState(() { _isProcessing = false; });
+      setState(() { 
+        _isProcessing = false;
+        _isCapturing = false;
+      });
     }
   }
 
@@ -275,103 +327,188 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   void _showResultDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text(
-          'Hasil Deteksi',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView( // Tambahkan scroll agar aman di layar kecil
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: 400,
+            maxHeight: 600,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_capturedImage != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _capturedImage!,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              const SizedBox(height: 16),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Rambu Terdeteksi:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  if (_isTerdeteksi)
-                    Text(
-                      _hasilConfidence,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
+              // Header
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _isTerdeteksi ? const Color(0xFFD6D588) : Colors.red[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _hasilNama, 
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF333333),
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD6D588),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
-                  textAlign: TextAlign.center,
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Hasil Deteksi',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              const Text(
-                'Deskripsi:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
               
-              Text(
-                _hasilDeskripsi, 
-                style: const TextStyle(fontSize: 14, height: 1.5),
+              // Content dengan scroll
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image
+                      if (_capturedImage != null)
+                        Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxHeight: 200,
+                                maxWidth: 300,
+                              ),
+                              child: Image.file(
+                                _capturedImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      
+                      // Confidence
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Rambu Terdeteksi:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 16
+                            ),
+                          ),
+                          if (_isTerdeteksi)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8, 
+                                vertical: 4
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _hasilConfidence,
+                                style: TextStyle(
+                                  fontSize: 12, 
+                                  color: Colors.green[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Nama Rambu
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _isTerdeteksi 
+                              ? const Color(0xFFD6D588) 
+                              : Colors.red[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _hasilNama, 
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF333333),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Deskripsi
+                      const Text(
+                        'Deskripsi:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 16
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      Text(
+                        _hasilDeskripsi, 
+                        style: const TextStyle(
+                          fontSize: 14, 
+                          height: 1.5
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Actions
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        if (mounted) {
+                          setState(() {
+                            _capturedImage = null;
+                          });
+                        }
+                      },
+                      child: const Text('Tutup'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        if (mounted) {
+                          setState(() {
+                            _capturedImage = null;
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD6D588),
+                        foregroundColor: Colors.black,
+                      ),
+                      child: const Text('Scan Lagi'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _capturedImage = null;
-              });
-            },
-            child: const Text('Tutup'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _capturedImage = null;
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD6D588),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Scan Lagi'),
-          ),
-        ],
       ),
     );
   }
@@ -516,25 +653,89 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(icon: Icons.image_outlined, onPressed: _pickImageFromGallery),
+          _buildActionButton(
+            icon: Icons.image_outlined, 
+            onPressed: (_isProcessing || _isCapturing) ? () {} : _pickImageFromGallery,
+            isDisabled: _isProcessing || _isCapturing,
+          ),
           _buildCaptureButton(),
-          _buildActionButton(icon: _isFlashOn ? Icons.flash_on : Icons.flash_off, onPressed: _toggleFlash, isActive: _isFlashOn),
+          _buildActionButton(
+            icon: _isFlashOn ? Icons.flash_on : Icons.flash_off, 
+            onPressed: _toggleFlash, 
+            isActive: _isFlashOn,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({required IconData icon, required VoidCallback onPressed, bool isActive = false}) {
+  Widget _buildActionButton({
+    required IconData icon, 
+    required VoidCallback onPressed, 
+    bool isActive = false,
+    bool isDisabled = false,
+  }) {
     return Container(
-      decoration: BoxDecoration(color: isActive ? const Color(0xFFD6D588) : Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))]),
-      child: IconButton(onPressed: onPressed, icon: Icon(icon, size: 28, color: isActive ? Colors.white : Colors.black), padding: const EdgeInsets.all(16)),
+      decoration: BoxDecoration(
+        color: isDisabled 
+            ? Colors.grey[300] 
+            : (isActive ? const Color(0xFFD6D588) : Colors.white),
+        shape: BoxShape.circle, 
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), 
+            blurRadius: 8, 
+            offset: const Offset(0, 2)
+          )
+        ]
+      ),
+      child: IconButton(
+        onPressed: isDisabled ? null : onPressed, 
+        icon: Icon(
+          icon, 
+          size: 28, 
+          color: isDisabled 
+              ? Colors.grey[500]
+              : (isActive ? Colors.white : Colors.black)
+        ), 
+        padding: const EdgeInsets.all(16)
+      ),
     );
   }
 
   Widget _buildCaptureButton() {
+    final isDisabled = _isProcessing || _isCapturing;
+    
     return GestureDetector(
-      onTap: _isProcessing ? null : _captureAndDetect,
-      child: Container(width: 70, height: 70, decoration: BoxDecoration(color: const Color(0xFFD6D588), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]), child: const Icon(Icons.search, size: 36, color: Colors.white)),
+      onTap: isDisabled ? null : _captureAndDetect,
+      child: Container(
+        width: 70, 
+        height: 70, 
+        decoration: BoxDecoration(
+          color: isDisabled ? Colors.grey[400] : const Color(0xFFD6D588),
+          shape: BoxShape.circle, 
+          border: Border.all(color: Colors.white, width: 4), 
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2), 
+              blurRadius: 12, 
+              offset: const Offset(0, 4)
+            )
+          ]
+        ), 
+        child: _isCapturing 
+            ? const Center(
+                child: SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                ),
+              )
+            : const Icon(Icons.search, size: 36, color: Colors.white)
+      ),
     );
   }
 }

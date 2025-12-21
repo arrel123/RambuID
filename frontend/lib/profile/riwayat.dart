@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/riwayat_service.dart';
+
 class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
 
@@ -32,14 +33,13 @@ class _RiwayatPageState extends State<RiwayatPage> {
     _loadRiwayat(); 
   }
 
-  // --- LOGIKA UTAMA: MENAMPILKAN GAMBAR (ASET / FILE) ---
+  // FUNGSI DIPERBAIKI: Support File path, URL, dan Asset
   Widget _buildImage(String? path) {
     if (path == null || path.isEmpty) {
-      // Icon default jika tidak ada path
       return const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 30);
     }
 
-    // 1. Jika gambar Aset (dari Database)
+    // 1. Jika gambar dari Asset (Database asli)
     if (path.startsWith('assets/')) {
       return Image.asset(
         path,
@@ -52,7 +52,36 @@ class _RiwayatPageState extends State<RiwayatPage> {
       );
     }
     
-    // 2. Jika gambar File (Foto Kamera Manual)
+    // 2. Jika gambar dari URL (Jelajahi/Edukasi)
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(Icons.broken_image, color: Colors.red);
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / 
+                      loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    
+    // 3. Jika gambar File lokal (Deteksi/Kamera)
     File file = File(path);
     if (file.existsSync()) {
       return Image.file(
@@ -68,12 +97,10 @@ class _RiwayatPageState extends State<RiwayatPage> {
     return const Icon(Icons.broken_image, color: Colors.grey);
   }
 
-  // Helper untuk mendapatkan nama bulan (Contoh: "December")
   String _getMonth(DateTime date) {
     return DateFormat('MMMM').format(date);
   }
 
-  // Helper untuk tanggal lengkap (Contoh: "09/12/2025")
   String _getDate(DateTime date) {
     return DateFormat('dd/MM/yyyy').format(date);
   }
@@ -81,14 +108,14 @@ class _RiwayatPageState extends State<RiwayatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Latar belakang putih sesuai desain
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Riwayat',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        backgroundColor: const Color(0xFFD6D588), // Warna Header Kuning
+        backgroundColor: const Color(0xFFD6D588),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
@@ -101,7 +128,10 @@ class _RiwayatPageState extends State<RiwayatPage> {
                     children: [
                       Icon(Icons.history, size: 80, color: Colors.grey),
                       SizedBox(height: 16),
-                      Text("Belum ada riwayat deteksi", style: TextStyle(color: Colors.grey)),
+                      Text(
+                        "Belum ada riwayat deteksi", 
+                        style: TextStyle(color: Colors.grey)
+                      ),
                     ],
                   ),
                 )
@@ -110,34 +140,32 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   itemCount: _riwayatList.length,
                   itemBuilder: (context, index) {
                     final item = _riwayatList[index];
-                    final String timestamp = item['timestamp'] ?? DateTime.now().toIso8601String();
+                    final String timestamp = item['timestamp'] ?? 
+                        DateTime.now().toIso8601String();
                     final DateTime currentDate = DateTime.parse(timestamp);
 
-                    // --- LOGIKA GROUPING TANGGAL ---
-                    // Cek apakah item ini memiliki tanggal yang berbeda dengan item sebelumnya
+                    // Logika grouping tanggal
                     bool showHeader = false;
                     if (index == 0) {
                       showHeader = true;
                     } else {
                       final prevItem = _riwayatList[index - 1];
                       final prevDate = DateTime.parse(prevItem['timestamp']);
-                      // Jika hari, bulan, atau tahun beda, tampilkan header baru
                       if (currentDate.day != prevDate.day || 
                           currentDate.month != prevDate.month || 
                           currentDate.year != prevDate.year) {
                         showHeader = true;
                       }
                     }
-                    // --------------------------------
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // TAMPILKAN HEADER TANGGAL (Jika Perlu)
+                        // Header Tanggal
                         if (showHeader) ...[
                           const SizedBox(height: 10),
                           Text(
-                            _getMonth(currentDate), // "December"
+                            _getMonth(currentDate),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -145,7 +173,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             ),
                           ),
                           Text(
-                            _getDate(currentDate), // "09/12/2025"
+                            _getDate(currentDate),
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.grey,
@@ -154,7 +182,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                           const SizedBox(height: 8),
                         ],
 
-                        // CARD ITEM UTAMA
+                        // Card Item
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
@@ -173,7 +201,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             padding: const EdgeInsets.all(16.0),
                             child: Row(
                               children: [
-                                // --- BOX GAMBAR (KIRI) ---
+                                // Box Gambar
                                 Container(
                                   width: 50,
                                   height: 50,
@@ -189,7 +217,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                 
                                 const SizedBox(width: 16),
 
-                                // --- TEKS TENGAH ---
+                                // Teks
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,25 +229,45 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                           fontWeight: FontWeight.bold,
                                           color: Colors.black,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        item['kategori'] ?? 'Kategori',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.grey.shade600,
-                                        ),
+                                      Row(
+                                        children: [
+                                          // Icon kategori
+                                          Icon(
+                                            _getCategoryIcon(item['kategori']),
+                                            size: 14,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Flexible(
+                                            child: Text(
+                                              item['kategori'] ?? 'Kategori',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
                                 ),
 
-                                // --- TOMBOL SAMPAH (KANAN) ---
+                                // Tombol Delete
                                 IconButton(
                                   onPressed: () => _deleteItem(index),
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  icon: const Icon(
+                                    Icons.delete_outline, 
+                                    color: Colors.red
+                                  ),
                                   padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(), // Agar icon tidak memakan tempat padding
+                                  constraints: const BoxConstraints(),
                                 ),
                               ],
                             ),
@@ -230,5 +278,18 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   },
                 ),
     );
+  }
+
+  // Helper: Icon berdasarkan kategori
+  IconData _getCategoryIcon(String? kategori) {
+    if (kategori == null) return Icons.info_outline;
+    
+    final kat = kategori.toLowerCase();
+    if (kat.contains('larangan')) return Icons.block;
+    if (kat.contains('peringatan')) return Icons.warning_amber;
+    if (kat.contains('perintah')) return Icons.arrow_forward;
+    if (kat.contains('petunjuk')) return Icons.signpost;
+    
+    return Icons.traffic;
   }
 }
