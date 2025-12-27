@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async'; // Import ini diperlukan untuk Timer
 import '../services/api_service.dart';
 
 // --- Custom Clipper (Sama seperti Login) ---
@@ -49,6 +50,93 @@ class _RegisPageState extends State<RegisPage> {
     super.dispose();
   }
 
+  // --- FUNGSI BARU: Menampilkan Dialog Sukses Cantik ---
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User tidak bisa menutup dengan tap di luar
+      builder: (BuildContext context) {
+        // Timer untuk menutup dialog otomatis dan pindah halaman setelah 2 detik
+        Timer(const Duration(seconds: 2), () {
+          if (mounted) {
+            // Tutup dialog terlebih dahulu
+            Navigator.of(context).pop();
+            // Lalu pindah ke halaman login
+            Navigator.pushReplacementNamed(context, '/login');
+          }
+        });
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24), // Sudut yang sangat membulat
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 10.0,
+                  offset: Offset(0.0, 10.0),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // Agar dialog menyesuaikan konten
+              children: [
+                // 1. Icon Centang Biru Besar
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF64B5F6), // Warna biru cerah mirip gambar
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    size: 50,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // 2. Judul Besar
+                const Text(
+                  "Pendaftaran Berhasil",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2C3E50),
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 3. Subtitle Pesan (Pesan dari API atau default)
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  // ---------------------------------------------------
+
   void _handleRegistration() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
@@ -56,6 +144,9 @@ class _RegisPageState extends State<RegisPage> {
       final nama = _nameController.text.trim();
       final username = _emailController.text.trim();
       final password = _passwordController.text;
+
+      // Simulasikan delay jaringan agar terlihat loading (opsional)
+      // await Future.delayed(const Duration(seconds: 1));
 
       final result = await ApiService.register(
         username,
@@ -68,22 +159,21 @@ class _RegisPageState extends State<RegisPage> {
       if (result['success']) {
         final data = result['data'];
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(data['message'] ?? "Pendaftaran berhasil!"),
-              backgroundColor: const Color(0xFF8B9C4A),
-            ),
-          );
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) Navigator.pushReplacementNamed(context, '/login');
-          });
+          // --- BAGIAN YANG DIUBAH ---
+          // Menggunakan dialog cantik sebagai pengganti SnackBar
+          String welcomeMessage = data['message'] ?? "Selamat datang, $username!";
+          _showSuccessDialog(welcomeMessage);
+          // --------------------------
         }
       } else {
         if (mounted) {
+          // Untuk error, SnackBar merah masih oke, atau mau dibuat dialog error juga?
+          // Untuk sekarang saya biarkan SnackBar untuk error.
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? "Pendaftaran gagal!"),
               backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating, // Agar sedikit lebih modern
             ),
           );
         }
@@ -301,15 +391,15 @@ class _RegisPageState extends State<RegisPage> {
 
   // --- WIDGET HELPERS ---
   Widget _buildLabel(String text) => Text(
-    text,
-    style: const TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.w600,
-      color: Colors.grey,
-      letterSpacing: 0.5,
-      fontFamily: 'Poppins',
-    ),
-  );
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey,
+          letterSpacing: 0.5,
+          fontFamily: 'Poppins',
+        ),
+      );
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -323,7 +413,14 @@ class _RegisPageState extends State<RegisPage> {
       decoration: _inputDecoration(hint),
       validator: (value) {
         if (value == null || value.isEmpty) return "Wajib diisi";
-        if (isEmail && !value.contains('@')) return "Email tidak valid";
+        if (isEmail) {
+          if (!value.contains('@')) return "Format email salah";
+          List<String> parts = value.split('@');
+          String usernamePart = parts[0];
+          if (usernamePart.length < 6) {
+            return "Username email (sebelum @) min. 6 karakter";
+          }
+        }
         return null;
       },
     );
@@ -352,8 +449,9 @@ class _RegisPageState extends State<RegisPage> {
       validator: (value) {
         if (value == null || value.isEmpty) return "Wajib diisi";
         if (!isConfirm && value.length < 6) return "Min. 6 karakter";
-        if (isConfirm && value != _passwordController.text)
+        if (isConfirm && value != _passwordController.text) {
           return "Sandi tidak cocok";
+        }
         return null;
       },
     );
@@ -372,7 +470,7 @@ class _RegisPageState extends State<RegisPage> {
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 14,
-      ), // Sedikit lebih tipis dari login karena field lebih banyak
+      ), 
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: Colors.grey[300]!),

@@ -8,7 +8,7 @@ class ConvexClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     Path path = Path();
-    path.lineTo(0, size.height - 50);
+    path.lineTo(0, size.height - 50); 
     path.quadraticBezierTo(
       size.width / 2, size.height,
       size.width, size.height - 50
@@ -81,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                isAdmin ? 'Selamat datang kembali, Admin!' : 'Selamat datang, $username!',
+                isAdmin ? 'Selamat datang, Admin!' : 'Selamat datang, $username!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
               ),
@@ -299,15 +299,15 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = false);
 
     if (result['success']) {
-      // 🔥 FIX PENTING: MENANGANI STRUKTUR DATA NESTED (SAMA SEPERTI PROFIL)
+      // FIX PENTING: MENANGANI STRUKTUR DATA NESTED (SAMA SEPERTI PROFIL)
       dynamic data = result['data'];
 
       // Cek apakah data dibungkus dalam key 'data' atau 'user'
       if (data is Map<String, dynamic>) {
         if (data.containsKey('data')) {
-           data = data['data']; 
+          data = data['data']; 
         } else if (data.containsKey('user')) {
-           data = data['user'];
+          data = data['user'];
         }
       }
 

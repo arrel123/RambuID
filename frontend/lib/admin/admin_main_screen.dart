@@ -99,6 +99,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                       );
 
                       if (should == true) {
+                        if (!context.mounted) return;
                         Navigator.pushNamedAndRemoveUntil(
                             context, '/login', (route) => false);
                       }
@@ -213,6 +214,7 @@ class _MainHeader extends StatelessWidget {
                 );
 
                 if (should == true) {
+                  if (!context.mounted) return;
                   Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                 }
               }

@@ -258,7 +258,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
                     border: Border.all(color: const Color(0xFFEEEEEE)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -298,7 +298,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFD6D588).withOpacity(0.1),
+                color: const Color(0xFFD6D588).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, size: 20, color: Colors.black87),

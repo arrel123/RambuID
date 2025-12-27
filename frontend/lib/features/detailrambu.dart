@@ -165,7 +165,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 2),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -216,7 +216,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

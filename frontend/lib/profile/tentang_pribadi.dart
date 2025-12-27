@@ -128,6 +128,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                         // PERBAIKAN: SnackBar Hijau DIHAPUS DISINI.
                         // Hanya melakukan navigasi balik untuk update data di SettingAccPage
                         if (mounted) {
+                          if (!context.mounted) return;
                           Navigator.pop(context, {
                             'nama': _namaLengkap,
                             'email': _email,

@@ -225,33 +225,37 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
         cls_idx = int(top['class'])
         conf = float(top['confidence'])
 
+        # UPDATE KAMUS LENGKAP (0-39)
         names_dictionary = {
             0: 'Balai Pertolongan Pertama',
             1: 'Banyak Anak-Anak',
-            2: 'Tikungan Ganda Pertama Ke Kanan',
-            3: 'Banyak Tikungan Pertama Kanan',
+            2: 'Banyak Tikungan Pertama Kanan',
+            3: 'Banyak Tikungan Pertama Kiri',
             4: 'Berhenti',
             5: 'Dilarang Belok Kanan',
             6: 'Dilarang Belok Kiri',
             7: 'Dilarang Berhenti',
             8: 'Dilarang Masuk',
+            9: 'Dilarang Mendahului',
             10: 'Dilarang Parkir',
             11: 'Dilarang Putar Balik',
             12: 'Gereja',
             13: 'Hati-Hati',
             14: 'Ikuti Bundaran',
             15: 'Jalur Sepeda',
-            16: 'Kecepatan Maks. 40 km', 
+            16: 'Kecepatan Maks. 30 km',
             17: 'Kecepatan Maks. 40 km',
+            18: 'Lajur Kiri',
             19: 'Lampu Lalu Lintas',
+            20: 'Larangan Muatan - 10 ton',
             21: 'Masjid',
             22: 'Pemberhentian Bus',
             23: 'Penyebrangan Pejalan Kaki',
             24: 'Peringatan Perlintasan Kereta Api',
             25: 'Perintah Jalur Penyebrangan',
-            26: 'Persimpangan 3 Sisi Kiri',
+            26: 'Persimpangan 3 Prioritas',
             27: 'Persimpangan 3 Prioritas Kanan',
-            28: 'Persimpangan 3 Prioritas',
+            28: 'Persimpangan 3 Prioritas Kiri',
             29: 'Persimpangan 3 Sisi Kiri',
             30: 'Persimpangan 4',
             31: 'Pilih Salah Satu Jalur',
@@ -259,11 +263,32 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
             33: 'Pom Bensin',
             34: 'Putar Balik',
             35: 'Rumah Sakit',
-            36: 'Tempat Parkir'
+            36: 'Tempat Parkir',
+            37: 'Tikungan Ganda Pertama Ke Kanan',
+            38: 'Tikungan Ganda Pertama Ke Kiri',
+            39: 'Tikungan Ke Kanan'
         }
 
-        # Jika AI mendeteksi ID yang sudah dihapus (9 atau 20), dia akan masuk ke "Unknown"
+        # Dapatkan Nama dari ID
         detected_name = names_dictionary.get(cls_idx, f"Unknown (ID: {cls_idx})")
+
+        # Daftar rambu yang ingin disembunyikan/dianggap tidak terdeteksi
+        blacklist = [
+            'Dilarang Mendahului',
+            'Banyak Tikungan Pertama Kanan',
+            'Banyak Tikungan Pertama Kiri',
+            'Tikungan Ganda Pertama Ke Kanan',
+            'Tikungan Ganda Pertama Ke Kiri',
+            'Kecepatan Maks. 30 km', 
+            'Lajur Kiri', 
+            'Larangan Muatan - 10 ton', 
+            'Tikungan Ke Kanan',
+            'Persimpangan 3 Prioritas'
+        ]
+
+        if detected_name in blacklist:
+            print(f"DEBUG: Rambu '{detected_name}' masuk BLACKLIST. Diabaikan.")
+            return {"status": "sukses", "terdeteksi": False, "pesan": "Objek diabaikan (Blacklist)"}
 
         # Cari di DB dengan NAMA PERSIS (==)
         info = db.query(Rambu).filter(Rambu.nama == detected_name).first()
@@ -283,7 +308,7 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
                 kat = info_fuzzy.kategori
                 detected_name = info_fuzzy.nama
             else:
-                # Jika benar-benar tidak ada di kamus (misal ID 9 atau 20 terdeteksi)
+                # Jika benar-benar tidak ada di kamus
                 is_detected = False
                 desc = f"Rambu terdeteksi (ID {cls_idx}) namun dinonaktifkan."
 

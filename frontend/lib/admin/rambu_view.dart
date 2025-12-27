@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -266,7 +265,7 @@ class _RambuViewState extends State<RambuView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 0,
               blurRadius: 10,
               offset: const Offset(0, 2),
@@ -363,8 +362,9 @@ class _RambuViewState extends State<RambuView> {
                           horizontalMargin: 24,
                           columnSpacing: 32,
                           headingRowHeight: 56,
-                          dataRowHeight: 80,
-                          headingRowColor: MaterialStateProperty.all(
+                          dataRowMinHeight: 72,
+                          dataRowMaxHeight: 72,
+                          headingRowColor: WidgetStateProperty.all(
                             Colors.grey[50],
                           ),
                           dividerThickness: 1,
@@ -473,20 +473,16 @@ class _RambuViewState extends State<RambuView> {
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: rambu.kategoriColor.withOpacity(
-                                        0.1,
                                       ),
+                                      decoration: BoxDecoration(
+                                      color: rambu.kategoriColor.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
-                                        color: rambu.kategoriColor.withOpacity(
-                                          0.3,
-                                        ),
-                                        width: 1,
+                                      color: rambu.kategoriColor.withValues(alpha: 0.2),
+                                      width: 1,
                                       ),
-                                    ),
-                                    child: Row(
+                                      ),
+                                      child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Container(
@@ -712,7 +708,7 @@ class _RambuEditDialogState extends State<_RambuEditDialog> {
         }
       }
     } catch (e) {
-      print('Error picking image: $e');
+      debugPrint('Error picking image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -762,7 +758,7 @@ class _RambuEditDialogState extends State<_RambuEditDialog> {
           border: Border.all(color: Colors.grey[300]!, width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -804,7 +800,7 @@ class _RambuEditDialogState extends State<_RambuEditDialog> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.9),
+                    color: Colors.green.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
@@ -841,7 +837,7 @@ class _RambuEditDialogState extends State<_RambuEditDialog> {
           border: Border.all(color: Colors.grey[300]!, width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -901,7 +897,7 @@ class _RambuEditDialogState extends State<_RambuEditDialog> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.9),
+                    color: Colors.blue.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
@@ -1030,7 +1026,7 @@ class _RambuEditDialogState extends State<_RambuEditDialog> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedKategori,
+                initialValue: _selectedKategori,
                 decoration: const InputDecoration(
                   hintText: 'Pilih kategori...',
                   border: OutlineInputBorder(),

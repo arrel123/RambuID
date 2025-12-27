@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:async';
-import 'dart:typed_data'; // Penting untuk Web Support
+// Penting untuk Web Support
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
   // KONFIGURASI KONEKSI
-  static const String _myLaptopIp = '192.168.1.6';
+  static const String _myLaptopIp = '192.168.1.3';
   static const String _port = '8000';
 
   static String get baseUrl {

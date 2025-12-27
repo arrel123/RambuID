@@ -119,7 +119,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         });
       }
     } catch (e) {
-      print('❌ Error loading Data Maps: $e');
+      debugPrint('❌ Error loading Data Maps: $e');
     }
   }
 
@@ -284,7 +284,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 20,
                             offset: const Offset(0, -4),
                           ),
@@ -299,7 +299,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFD6D588).withOpacity(0.2),
+                                  color: const Color(0xFFD6D588).withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
@@ -349,7 +349,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD6D588).withOpacity(0.1),
+                              color: const Color(0xFFD6D588).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -418,7 +418,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, -4),
                             ),
@@ -429,7 +429,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFD6D588).withOpacity(0.2),
+                                color: const Color(0xFFD6D588).withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(Icons.search, size: 24),
@@ -479,7 +479,7 @@ class _JelajahiMapsPageState extends State<JelajahiMapsPage> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
           ),
         ],
@@ -649,7 +649,7 @@ class _SearchBottomSheetState extends State<SearchBottomSheet> {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFD6D588).withOpacity(0.2),
+                            color: const Color(0xFFD6D588).withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(iconData, color: iconColor),

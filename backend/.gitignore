@@ -1,0 +1,16 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Database (kecuali Anda memang ingin berbagi db yg sama)
+*.db
+*.sqlite3
+
+# Environment variables (PENTING untuk keamanan)
+.env
+venv/
+.venv/
+
+# PyTorch models (Opsional: un-comment jika file terlalu besar)
+# *.pt
+# *.pth

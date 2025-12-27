@@ -33,7 +33,7 @@ class _DashboardViewState extends State<DashboardView> {
     try {
       final result = await ApiService.getStatistics();
 
-      print('🔵 Dashboard: Statistics result = $result');
+      debugPrint('🔵 Dashboard: Statistics result = $result');
 
       if (result['success'] == true) {
         final Map<String, dynamic> stats = result['data'];
@@ -42,7 +42,7 @@ class _DashboardViewState extends State<DashboardView> {
           _totalRambu = stats['total_rambu'] ?? 0;
           _isLoading = false;
         });
-        print(
+        debugPrint(
           '🔵 Dashboard: Total Users = $_totalUsers, Total Rambu = $_totalRambu',
         );
       } else {
@@ -50,10 +50,10 @@ class _DashboardViewState extends State<DashboardView> {
           _errorMessage = result['message'] ?? 'Gagal memuat statistik';
           _isLoading = false;
         });
-        print('🔴 Dashboard: Error = $_errorMessage');
+        debugPrint('🔴 Dashboard: Error = $_errorMessage');
       }
     } catch (e) {
-      print('🔴 Dashboard: Exception = $e');
+      debugPrint('🔴 Dashboard: Exception = $e');
       setState(() {
         _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
         _isLoading = false;
@@ -136,7 +136,7 @@ class _SummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 10,
             offset: const Offset(0, 2),
@@ -233,7 +233,7 @@ class _RambuPreviewCardState extends State<_RambuPreviewCard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             spreadRadius: 0,
             blurRadius: 10,
             offset: const Offset(0, 2),
@@ -340,7 +340,7 @@ class _RambuPreviewCardState extends State<_RambuPreviewCard> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
 
             const SizedBox(height: 16),
 

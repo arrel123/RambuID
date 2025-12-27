@@ -54,12 +54,12 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
     try {
       final result = await ApiService.getAllUsers();
 
-      print('🔵 Data Pengguna: Result = $result');
+      debugPrint('🔵 Data Pengguna: Result = $result');
 
       if (result['success'] == true) {
         final List<dynamic> usersData = result['data'] ?? [];
-        print('🔵 Data Pengguna: Users data = $usersData');
-        print('🔵 Data Pengguna: Users count = ${usersData.length}');
+        debugPrint('🔵 Data Pengguna: Users data = $usersData');
+        debugPrint('🔵 Data Pengguna: Users count = ${usersData.length}');
 
         setState(() {
           _usersList = usersData
@@ -67,7 +67,7 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
                 try {
                   return UserData.fromJson(user as Map<String, dynamic>);
                 } catch (e) {
-                  print('🔴 Error parsing user: $user, Error: $e');
+                  debugPrint('🔴 Error parsing user: $user, Error: $e');
                   return null;
                 }
               })
@@ -77,16 +77,16 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
           _isLoading = false;
         });
 
-        print('🔵 Data Pengguna: Parsed users count = ${_usersList.length}');
+        debugPrint('🔵 Data Pengguna: Parsed users count = ${_usersList.length}');
       } else {
         setState(() {
           _errorMessage = result['message'] ?? 'Gagal memuat data pengguna';
           _isLoading = false;
         });
-        print('🔴 Data Pengguna: Error = $_errorMessage');
+        debugPrint('🔴 Data Pengguna: Error = $_errorMessage');
       }
     } catch (e) {
-      print('🔴 Data Pengguna: Exception = $e');
+      debugPrint('🔴 Data Pengguna: Exception = $e');
       setState(() {
         _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
         _isLoading = false;
@@ -122,7 +122,7 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 0,
               blurRadius: 10,
               offset: const Offset(0, 2),
@@ -295,8 +295,9 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
                       horizontalMargin: isMobile ? 16 : 32,
                       columnSpacing: isMobile ? 24 : 48,
                       headingRowHeight: 56,
-                      dataRowHeight: 72,
-                      headingRowColor: MaterialStateProperty.all(
+                      dataRowMinHeight: 72,
+                      dataRowMaxHeight: 72,
+                      headingRowColor: WidgetStateProperty.all(
                         Colors.grey[50],
                       ),
                       dividerThickness: 1,
@@ -366,10 +367,10 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
                         final isEven = index % 2 == 0;
 
                         return DataRow(
-                          color: MaterialStateProperty.resolveWith<Color?>((
-                            Set<MaterialState> states,
+                          color: WidgetStateProperty.resolveWith<Color?>((
+                            Set<WidgetState> states,
                           ) {
-                            if (states.contains(MaterialState.hovered)) {
+                            if (states.contains(WidgetState.hovered)) {
                               return Colors.blue[50];
                             }
                             if (isEven) {
@@ -545,7 +546,7 @@ class _DataPenggunaViewState extends State<DataPenggunaView> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

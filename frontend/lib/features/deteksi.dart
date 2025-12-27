@@ -571,7 +571,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -628,14 +628,14 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
 
   Widget _buildFlipCameraButton() {
     return Container(
-      decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
       child: IconButton(onPressed: _flipCamera, icon: const Icon(Icons.flip_camera_android, color: Colors.white, size: 28), padding: const EdgeInsets.all(12)),
     );
   }
 
   Widget _buildProcessingOverlay() {
     return Container(
-      color: Colors.black.withOpacity(0.7),
+      color: Colors.black.withValues(alpha: 0.7),
       child: const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.white)), SizedBox(height: 16), Text('Mendeteksi rambu...', style: TextStyle(color: Colors.white, fontSize: 16))])),
     );
   }
@@ -643,7 +643,21 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
   Widget _buildInstructions() {
     return Positioned(
       bottom: 20, left: 0, right: 0,
-      child: Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)), child: const Text('Arahkan kamera ke rambu lalu lintas', style: TextStyle(color: Colors.white, fontSize: 14), textAlign: TextAlign.center))),
+      child: Center(
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    decoration: BoxDecoration(
+      // PERBAIKAN: Ganti .withOpacity() menjadi .withValues()
+      color: Colors.black.withValues(alpha: 0.6), 
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: const Text(
+      'Arahkan kamera ke rambu lalu lintas',
+      style: TextStyle(color: Colors.white, fontSize: 14),
+      textAlign: TextAlign.center,
+    ),
+  ),
+),
     );
   }
 
@@ -683,7 +697,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
         shape: BoxShape.circle, 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), 
+            color: Colors.black.withValues(alpha: 0.1), 
             blurRadius: 8, 
             offset: const Offset(0, 2)
           )
@@ -717,7 +731,7 @@ class _DeteksiPageState extends State<DeteksiPage> with WidgetsBindingObserver {
           border: Border.all(color: Colors.white, width: 4), 
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2), 
+              color: Colors.black.withValues(alpha: 0.2), 
               blurRadius: 12, 
               offset: const Offset(0, 4)
             )
