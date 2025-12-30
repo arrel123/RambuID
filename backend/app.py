@@ -50,7 +50,7 @@ Base = declarative_base()
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
-# --- MODEL DATABASE ---
+# --- MODEL DATABASE (UPDATED: Tambah Kolom Bahasa Inggris) ---
 class Rambu(Base):
     __tablename__ = "rambu"
     id = Column(Integer, primary_key=True, index=True)
@@ -58,6 +58,11 @@ class Rambu(Base):
     gambar_url = Column(String)
     deskripsi = Column(Text, nullable=True)
     kategori = Column(String, nullable=False)
+    
+    # [BARU] Kolom Bahasa Inggris
+    nama_en = Column(String, nullable=True)
+    deskripsi_en = Column(Text, nullable=True)
+    kategori_en = Column(String, nullable=True)
 
 class User(Base):
     __tablename__ = "users"
@@ -76,13 +81,19 @@ class Jelajahi(Base):
     longitude = Column(Float, nullable=False)
     rambu = relationship("Rambu")
 
-# --- SCHEMA ---
+# --- SCHEMA (UPDATED: Tambah Field Bahasa Inggris) ---
 class RambuResponse(BaseModel):
     id: int
     nama: str
     gambar_url: Optional[str]
     deskripsi: Optional[str]
     kategori: str
+    
+    # [BARU] Field Bahasa Inggris agar dikirim API
+    nama_en: Optional[str] = None
+    deskripsi_en: Optional[str] = None
+    kategori_en: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
@@ -132,6 +143,12 @@ class JelajahiWithRambuResponse(BaseModel):
     gambar_url: Optional[str]
     deskripsi: Optional[str]
     kategori: str
+    
+    # [BARU] Field Bahasa Inggris untuk Peta
+    nama_en: Optional[str] = None
+    deskripsi_en: Optional[str] = None
+    kategori_en: Optional[str] = None
+    
     class Config:
         from_attributes = True
 
@@ -206,7 +223,7 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
         results = ai_model(img)
         df = results.pandas().xyxy[0]
 
-        # --- DEBUGGING LENGKAP DI TERMINAL ---
+        # --- DEBUGGING ---
         print("\n" + "="*30)
         print(f"--- DEBUG: MATA AI MELIHAT ---")
         if df.empty:
@@ -215,17 +232,15 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
             for index, row in df.iterrows():
                 print(f"Kandidat {index+1}: ID {int(row['class'])} ({row['name']}) - Yakin: {row['confidence']:.2f}")
         print("="*30 + "\n")
-        # -------------------------------------
+        # -----------------
 
         if df.empty:
             return {"status": "sukses", "terdeteksi": False, "pesan": "Tidak ada rambu"}
 
-        # Ambil yang confidence-nya paling tinggi
         top = df.iloc[0]
         cls_idx = int(top['class'])
         conf = float(top['confidence'])
 
-        # UPDATE KAMUS LENGKAP (0-39)
         names_dictionary = {
             0: 'Balai Pertolongan Pertama',
             1: 'Banyak Anak-Anak',
@@ -269,28 +284,18 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
             39: 'Tikungan Ke Kanan'
         }
 
-        # Dapatkan Nama dari ID
         detected_name = names_dictionary.get(cls_idx, f"Unknown (ID: {cls_idx})")
 
-        # Daftar rambu yang ingin disembunyikan/dianggap tidak terdeteksi
         blacklist = [
-            'Dilarang Mendahului',
-            'Banyak Tikungan Pertama Kanan',
-            'Banyak Tikungan Pertama Kiri',
-            'Tikungan Ganda Pertama Ke Kanan',
-            'Tikungan Ganda Pertama Ke Kiri',
-            'Kecepatan Maks. 30 km', 
-            'Lajur Kiri', 
-            'Larangan Muatan - 10 ton', 
-            'Tikungan Ke Kanan',
-            'Persimpangan 3 Prioritas'
+            'Dilarang Mendahului', 'Banyak Tikungan Pertama Kanan', 'Banyak Tikungan Pertama Kiri',
+            'Tikungan Ganda Pertama Ke Kanan', 'Tikungan Ganda Pertama Ke Kiri', 'Kecepatan Maks. 30 km', 
+            'Lajur Kiri', 'Larangan Muatan - 10 ton', 'Tikungan Ke Kanan', 'Persimpangan 3 Prioritas'
         ]
 
         if detected_name in blacklist:
-            print(f"DEBUG: Rambu '{detected_name}' masuk BLACKLIST. Diabaikan.")
             return {"status": "sukses", "terdeteksi": False, "pesan": "Objek diabaikan (Blacklist)"}
 
-        # Cari di DB dengan NAMA PERSIS (==)
+        # Cari di DB
         info = db.query(Rambu).filter(Rambu.nama == detected_name).first()
 
         desc = "Deskripsi belum ada."
@@ -301,14 +306,12 @@ async def detect_sign_ai(file: UploadFile = File(...), db: Session = Depends(get
             desc = info.deskripsi
             kat = info.kategori
         else:
-            # Fallback pencarian mirip
             info_fuzzy = db.query(Rambu).filter(Rambu.nama.ilike(f"%{detected_name}%")).first()
             if info_fuzzy:
                 desc = info_fuzzy.deskripsi
                 kat = info_fuzzy.kategori
                 detected_name = info_fuzzy.nama
             else:
-                # Jika benar-benar tidak ada di kamus
                 is_detected = False
                 desc = f"Rambu terdeteksi (ID {cls_idx}) namun dinonaktifkan."
 
@@ -382,12 +385,22 @@ def all_rambu(db: Session=Depends(get_db)):
 
 @app.get("/jelajahi/", response_model=List[JelajahiWithRambuResponse])
 def all_jelajahi(db: Session=Depends(get_db)):
-    res = db.query(Jelajahi.id, Jelajahi.rambu_id, Jelajahi.latitude, Jelajahi.longitude, Rambu.nama, Rambu.gambar_url, Rambu.deskripsi, Rambu.kategori).join(Rambu).all()
+    # UPDATED: Menambahkan Rambu.nama_en, deskripsi_en, kategori_en ke query
+    res = db.query(
+        Jelajahi.id, Jelajahi.rambu_id, Jelajahi.latitude, Jelajahi.longitude, 
+        Rambu.nama, Rambu.gambar_url, Rambu.deskripsi, Rambu.kategori,
+        Rambu.nama_en, Rambu.deskripsi_en, Rambu.kategori_en # <-- Field baru
+    ).join(Rambu).all()
+    
     out = []
     for r in res:
         url = r.gambar_url
         if url and not url.startswith(('http','/')): url = f"/{url}"
-        out.append({"id":r.id, "rambu_id":r.rambu_id, "latitude":r.latitude, "longitude":r.longitude, "nama":r.nama, "gambar_url":url, "deskripsi":r.deskripsi, "kategori":r.kategori})
+        out.append({
+            "id":r.id, "rambu_id":r.rambu_id, "latitude":r.latitude, "longitude":r.longitude, 
+            "nama":r.nama, "gambar_url":url, "deskripsi":r.deskripsi, "kategori":r.kategori,
+            "nama_en": r.nama_en, "deskripsi_en": r.deskripsi_en, "kategori_en": r.kategori_en # <-- Map field baru
+        })
     return out
 
 @app.post("/jelajahi/", response_model=JelajahiResponse)

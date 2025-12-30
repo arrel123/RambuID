@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Pastikan package provider sudah diinstall
 import '../services/api_service.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/language_provider.dart'; // Pastikan path ini sesuai dengan project Anda
 import 'detailrambu.dart';
 
 class EdukasiPage extends StatefulWidget {
@@ -20,6 +22,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  // Mendapatkan Tab Kategori sesuai Bahasa (Lokal)
   List<String> get tabs => [
     AppLocalizations.of(context).translate('category_all'),
     AppLocalizations.of(context).translate('category_warning'),
@@ -28,6 +31,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
     AppLocalizations.of(context).translate('category_command'),
   ];
 
+  // Mapping Tab ke Kategori Database (Database masih pakai ID 'Peringatan' dsb)
   Map<String, String> get categoryMapping => {
     AppLocalizations.of(context).translate('category_all'): 'Semua',
     AppLocalizations.of(context).translate('category_warning'): 'Peringatan',
@@ -90,6 +94,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
     List<dynamic> filtered = _rambuList;
     final dbCategory = categoryMapping[selectedTab] ?? 'Semua';
 
+    // Filter Kategori
     if (dbCategory != 'Semua') {
       filtered = filtered.where((item) {
         final kategoriBackend = (item['kategori'] ?? '').toString().toLowerCase();
@@ -98,10 +103,14 @@ class _EdukasiPageState extends State<EdukasiPage> {
       }).toList();
     }
 
+    // Filter Search
     if (searchQuery.isNotEmpty) {
       filtered = filtered.where((item) {
+        // Cari di nama Indo maupun Inggris
         final nama = (item['nama'] ?? '').toString().toLowerCase();
-        return nama.contains(searchQuery.toLowerCase());
+        final namaEn = (item['nama_en'] ?? '').toString().toLowerCase();
+        final query = searchQuery.toLowerCase();
+        return nama.contains(query) || namaEn.contains(query);
       }).toList();
     }
 
@@ -120,6 +129,10 @@ class _EdukasiPageState extends State<EdukasiPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    
+    // 1. AMBIL BAHASA SAAT INI DARI PROVIDER
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final currentLang = languageProvider.locale.languageCode;
     
     return Scaffold(
       backgroundColor: Colors.white,
@@ -220,7 +233,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
             ),
           ),
 
-          // Content
+          // Content Grid
           Expanded(
             child: _isLoading
                 ? const Center(
@@ -233,7 +246,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
                     : getFilteredData().isEmpty
                         ? Center(child: Text(l10n.translate('data_not_found')))
                         : GridView.builder(
-                            // 🔥 PERBAIKAN: Menambahkan padding bottom 100 agar aman dari navbar
                             padding: const EdgeInsets.only(
                               left: 16, 
                               right: 16, 
@@ -250,7 +262,16 @@ class _EdukasiPageState extends State<EdukasiPage> {
                             itemBuilder: (context, index) {
                               final item = getFilteredData()[index];
                               final imageUrl = _getImageUrl(item['gambar_url']);
-                              final namaRambu = item['nama'] ?? 'Tanpa Nama';
+                              
+                              // 2. LOGIKA PEMILIHAN NAMA BERDASARKAN BAHASA
+                              String namaRambu;
+                              if (currentLang == 'en') {
+                                // Jika bahasa Inggris, ambil nama_en. Jika null, fallback ke nama Indo
+                                namaRambu = item['nama_en'] ?? item['nama'] ?? 'No Name';
+                              } else {
+                                // Jika bahasa Indonesia
+                                namaRambu = item['nama'] ?? 'Tanpa Nama';
+                              }
 
                               return GestureDetector(
                                 onTap: () => _navigateToDetail(context, item),
@@ -285,7 +306,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
                                       Padding(
                                         padding: const EdgeInsets.all(8.0),
                                         child: Text(
-                                          namaRambu,
+                                          namaRambu, // <-- Variable ini sekarang dinamis
                                           textAlign: TextAlign.center,
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,

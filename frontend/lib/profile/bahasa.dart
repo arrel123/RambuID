@@ -7,8 +7,15 @@ import '../providers/language_provider.dart';
 class BahasaPage extends StatelessWidget {
   const BahasaPage({super.key});
 
-  // --- FUNGSI POP-UP GAYA LOGIN PAGE (PENGGANTI SNACKBAR) ---
-  void _showSuccessDialog(BuildContext context, String languageName) {
+  // --- FUNGSI POP-UP GAYA LOGIN PAGE (DIPERBAIKI) ---
+  // Sekarang menerima 'newLanguageCode' untuk menentukan teks yang tepat
+  void _showSuccessDialog(BuildContext context, String newLanguageCode) {
+    // Tentukan teks berdasarkan bahasa yang BARU dipilih
+    String title = newLanguageCode == 'id' ? 'Berhasil Diganti' : 'Successfully Changed';
+    String subtitle = newLanguageCode == 'id' 
+        ? 'Bahasa diubah ke Bahasa Indonesia' 
+        : 'Language changed to English';
+
     showDialog(
       context: context,
       barrierDismissible: false, // User tidak bisa klik luar
@@ -16,34 +23,44 @@ class BahasaPage extends StatelessWidget {
         return AlertDialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20), // Sudut lebih halus
           ),
+          // Mengatur padding agar proporsional
           contentPadding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 1. Icon Checklis Biru
-              const Icon(
-                Icons.check_circle_outline,
-                color: Color(0xFF64B5F6), // Warna Biru Muda
-                size: 60,
-              ),
-              const SizedBox(height: 16),
-              
-              // 2. Judul Besar
-              const Text(
-                'Berhasil Diganti',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF555555), // Abu Gelap
+              // 1. Icon Checklis Biru dengan background tipis (Opsional untuk estetika)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF64B5F6).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Color(0xFF64B5F6), // Warna Biru Muda
+                  size: 50,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
+              
+              // 2. Judul Besar
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20, // Ukuran disesuaikan
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333), // Lebih gelap agar kontras
+                  fontFamily: 'Poppins', // Opsional: jika pakai custom font
+                ),
+              ),
+              const SizedBox(height: 8),
               
               // 3. Subtitle
               Text(
-                'Bahasa diubah ke $languageName',
+                subtitle,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,
@@ -58,8 +75,6 @@ class BahasaPage extends StatelessWidget {
 
     // Timer 2 Detik: Tutup Pop-up Otomatis
     Future.delayed(const Duration(seconds: 2), () {
-      // Cek apakah context masih valid sebelum pop
-      // Kita menggunakan Navigator.of(context, rootNavigator: true) untuk memastikan dialog tertutup
       if (context.mounted) {
         Navigator.of(context).pop();
       }
@@ -155,14 +170,15 @@ class BahasaPage extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        color: Colors.white,
+        color: Colors.white, // Memastikan area klik jelas
         child: Row(
           children: [
-            // Checkmark
+            // Checkmark (Dipindah ke kiri sesuai gaya UI modern, atau bisa tetap di kanan)
+            // Di kode asli Anda checkmark ada di kiri, saya pertahankan.
             SizedBox(
               width: 24,
               child: isSelected
-                  ? const Icon(Icons.check, color: Color(0xFFD6D588), size: 20)
+                  ? const Icon(Icons.check, color: Color(0xFFD6D588), size: 24)
                   : const SizedBox(),
             ),
             const SizedBox(width: 16),
@@ -175,7 +191,7 @@ class BahasaPage extends StatelessWidget {
                       text: title,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600, // Sedikit lebih tebal
                         color: Colors.black87,
                       ),
                     ),
@@ -200,21 +216,23 @@ class BahasaPage extends StatelessWidget {
   Widget _buildDivider() {
     return Container(
       height: 1,
-      color: Colors.grey[300],
+      color: Colors.grey[200], // Warna lebih halus
       margin: const EdgeInsets.symmetric(horizontal: 20),
     );
   }
 
   void _showLanguageConfirmationDialog(BuildContext context, String newLanguage) {
     final l10n = AppLocalizations.of(context);
-    final languageName = newLanguage == 'en' ? l10n.english : l10n.indonesian;
+    // Kita gunakan l10n yang ada saat ini untuk dialog konfirmasi
+    final languageName = newLanguage == 'en' ? 'English' : 'Bahasa Indonesia'; 
 
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(15),
           ),
           title: Text(
             l10n.changeLanguage,
@@ -222,7 +240,7 @@ class BahasaPage extends StatelessWidget {
           ),
           content: Text(
             '${l10n.confirmLanguageChange} $languageName?',
-            style: const TextStyle(fontSize: 14),
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
           ),
           actions: [
             TextButton(
@@ -239,25 +257,25 @@ class BahasaPage extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                // 1. Ubah Bahasa
+                // 1. Ubah Bahasa di Provider
                 await Provider.of<LanguageProvider>(context, listen: false)
                     .changeLanguage(newLanguage);
                 
-                // 2. Tutup Dialog Konfirmasi (dialogContext)
+                // 2. Tutup Dialog Konfirmasi
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
                 }
                 
-                // 3. Tampilkan Pop-up Sukses (Gaya Login)
-                // Menggunakan 'context' utama (bukan dialogContext)
+                // 3. Tampilkan Pop-up Sukses
+                // PENTING: Kita kirim kode bahasa baru (newLanguage) ke fungsi ini
                 if (context.mounted) {
-                  _showSuccessDialog(context, languageName);
+                  _showSuccessDialog(context, newLanguage);
                 }
               },
               child: Text(
                 l10n.yes,
                 style: const TextStyle(
-                  color: Color(0xFFD6D588),
+                  color: Color(0xFFD6D588), // Sesuaikan warna tema Anda
                   fontWeight: FontWeight.bold,
                 ),
               ),

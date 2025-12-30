@@ -213,7 +213,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                           const SizedBox(height: 12),
                         ],
 
-                        // Card Item (Sama seperti kode asli)
+                        // Card Item
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
@@ -222,7 +222,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             border: Border.all(color: Colors.grey.shade300),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               )

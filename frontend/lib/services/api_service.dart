@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:async';
-// Penting untuk Web Support
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
   // KONFIGURASI KONEKSI
-  static const String _myLaptopIp = '192.168.1.3';
+  static const String _myLaptopIp = '192.168.1.3'; // Pastikan IP ini benar sesuai laptop Anda
   static const String _port = '8000';
 
   static String get baseUrl {
@@ -25,8 +24,33 @@ class ApiService {
         'Accept': 'application/json',
       };
 
-  // FUNGSI UTAMA: USER PROFILE (DIPERBAIKI UNTUK DEBUGGING)
+  // --- GET RAMBU LIST (DENGAN DEBUGGING & FIX) ---
+  static Future<Map<String, dynamic>> getRambuList() async {
+    try {
+      final url = '$baseUrl/rambu/';
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        
+        // --- DEBUGGING: CEK APAKAH ADA BAHASA INGGRIS ---
+        if (data is List && data.isNotEmpty) {
+          // Debugging log (bisa dihapus nanti jika sudah fix)
+          debugPrint("🔍 Cek Data Pertama dari Server:");
+          debugPrint("   Nama Indo: ${data[0]['nama']}");
+          debugPrint("   Nama En: ${data[0]['nama_en']}"); 
+        }
+        // ------------------------------------------------
 
+        return {'success': true, 'data': data};
+      }
+      return {'success': false, 'message': 'Gagal mengambil data rambu'};
+    } catch (e) { 
+      return {'success': false, 'message': 'Koneksi gagal: $e'}; 
+    }
+  }
+
+  // --- USER PROFILE ---
   static Future<Map<String, dynamic>> getUserProfile(int userId) async {
     try {
       final url = '$baseUrl/users/$userId/profile';
@@ -34,13 +58,9 @@ class ApiService {
 
       final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 10));
 
-      debugPrint('🔵 STATUS CODE: ${response.statusCode}'); 
-      debugPrint('🔵 RESPONSE BODY: ${response.body}'); // <-- Cek ini di terminal jika masih error
-
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return {'success': true, 'data': jsonDecode(response.body)};
       } else {
-        // Coba ambil pesan error spesifik dari backend
         try {
           final errBody = jsonDecode(response.body);
           return {'success': false, 'message': errBody['detail'] ?? 'Gagal mengambil profil'};
@@ -49,12 +69,10 @@ class ApiService {
         }
       }
     } catch (e) {
-      debugPrint('🔴 ERROR KONEKSI: $e');
       return {'success': false, 'message': 'Koneksi gagal: $e'};
     }
   }
 
-  // HELPER GAMBAR (PENTING)
   static String getImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) {
       return 'https://via.placeholder.com/150';
@@ -62,7 +80,6 @@ class ApiService {
     if (imagePath.startsWith('http')) {
       return imagePath;
     }
-    // Fix path Windows (\) ke Unix (/)
     String cleanPath = imagePath.replaceAll('\\', '/');
     if (!cleanPath.startsWith('/')) {
       cleanPath = '/$cleanPath';
@@ -84,6 +101,7 @@ class ApiService {
     }
   }
 
+  // --- AUTH ---
   static Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final url = '$baseUrl/login';
@@ -112,6 +130,7 @@ class ApiService {
     } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
   }
 
+  // --- UPDATE PROFILE ---
   static Future<Map<String, dynamic>> updateUserProfile({required int userId, String? namaLengkap, String? username, String? alamat, String? password, XFile? profileImage}) async {
     if (kIsWeb) {
       Uint8List? imageBytes;
@@ -137,6 +156,8 @@ class ApiService {
     } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
   }
 
+  // --- FUNGSI YANG HILANG SEBELUMNYA (RESTORED) ---
+  
   static Future<Map<String, dynamic>> getAllUsers() async {
     try {
       final url = '$baseUrl/users/';
@@ -155,14 +176,29 @@ class ApiService {
     } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
   }
 
-  static Future<Map<String, dynamic>> getRambuList() async {
+  static Future<Map<String, dynamic>> detectRambu(XFile image) async {
     try {
-      final url = '$baseUrl/rambu/';
-      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 10));
+      final url = '$baseUrl/deteksi-rambu/';
+      var request = http.MultipartRequest('POST', Uri.parse(url));
+      final bytes = await image.readAsBytes();
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: image.name));
+      var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      var response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode >= 200 && response.statusCode < 300) return {'success': true, 'data': jsonDecode(response.body)};
-      return {'success': false, 'message': 'Gagal mengambil data rambu'};
+      return {'success': false, 'message': 'Gagal mendeteksi: ${response.statusCode}'};
     } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
   }
+
+  static Future<Map<String, dynamic>> getJelajahiPoints() async {
+    try {
+      final url = '$baseUrl/jelajahi/';
+      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) return {'success': true, 'data': jsonDecode(response.body)};
+      return {'success': false, 'message': 'Gagal mengambil data maps'};
+    } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
+  }
+
+  // --- CRUD RAMBU ---
 
   static Future<Map<String, dynamic>> deleteRambu(int id) async {
     try {
@@ -197,27 +233,7 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> detectRambu(XFile image) async {
-    try {
-      final url = '$baseUrl/deteksi-rambu/';
-      var request = http.MultipartRequest('POST', Uri.parse(url));
-      final bytes = await image.readAsBytes();
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: image.name));
-      var streamedResponse = await request.send().timeout(const Duration(seconds: 30));
-      var response = await http.Response.fromStream(streamedResponse);
-      if (response.statusCode >= 200 && response.statusCode < 300) return {'success': true, 'data': jsonDecode(response.body)};
-      return {'success': false, 'message': 'Gagal mendeteksi: ${response.statusCode}'};
-    } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
-  }
-
-  static Future<Map<String, dynamic>> getJelajahiPoints() async {
-    try {
-      final url = '$baseUrl/jelajahi/';
-      final response = await http.get(Uri.parse(url), headers: headers).timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) return {'success': true, 'data': jsonDecode(response.body)};
-      return {'success': false, 'message': 'Gagal mengambil data maps'};
-    } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
-  }
+  // --- JELAJAHI (MAPS) ---
 
   static Future<Map<String, dynamic>> getJelajahiWithRambu() async {
     try {
@@ -232,6 +248,7 @@ class ApiService {
     } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
   }
 
+  // FIX: _getCombinedData sekarang mengambil SEMUA data rambu (nama_en, dll)
   static Future<Map<String, dynamic>> _getCombinedData() async {
     try {
       final rambuResponse = await getRambuList();
@@ -241,12 +258,17 @@ class ApiService {
       final jelajahiResponse = await http.get(Uri.parse(jelajahiUrl), headers: headers);
       if (jelajahiResponse.statusCode != 200) return {'success': false, 'message': 'Gagal ambil lokasi'};
       final jelajahiList = jsonDecode(jelajahiResponse.body) as List<dynamic>;
+      
       List<Map<String, dynamic>> combinedData = [];
       for (var location in jelajahiList) {
         int? rambuId = location['rambu_id'];
         var rambu = rambuList.firstWhere((r) => r['id'] == rambuId, orElse: () => null);
+        
         if (rambu != null) {
-          combinedData.add({...location, 'nama': rambu['nama'], 'deskripsi': rambu['deskripsi'], 'kategori': rambu['kategori'], 'gambar_url': rambu['gambar_url']});
+          // GABUNGKAN SEMUA DATA (Agar nama_en dan deskripsi_en terbawa)
+          Map<String, dynamic> merged = Map.from(location);
+          merged.addAll(rambu); 
+          combinedData.add(merged);
         }
       }
       return {'success': true, 'data': combinedData};
@@ -279,6 +301,8 @@ class ApiService {
       return {'success': false, 'message': 'Gagal menghapus lokasi'};
     } catch (e) { return {'success': false, 'message': 'Koneksi gagal: $e'}; }
   }
+
+  // --- PRIVATE HELPERS ---
 
   static Future<Map<String, dynamic>> _updateUserProfileMobile({required int userId, String? namaLengkap, String? username, String? alamat, String? password, XFile? profileImage}) async {
     try {

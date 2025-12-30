@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:provider/provider.dart'; // Tambahkan Import Provider
 import '../services/api_service.dart';
-import '../services/riwayat_service.dart'; // TAMBAHAN: Import Riwayat Service
+import '../services/riwayat_service.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/language_provider.dart'; // Import Language Provider
 
 class DetailRambuScreen extends StatefulWidget {
   final Map<String, dynamic> rambu;
@@ -22,21 +24,19 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     super.initState();
     _initTts();
     
-    // TAMBAHAN: Otomatis simpan ke riwayat saat user buka detail rambu
+    // Otomatis simpan ke riwayat saat user buka detail rambu
     _saveToRiwayat();
   }
 
-  // FUNGSI BARU: Simpan ke Riwayat
   Future<void> _saveToRiwayat() async {
     try {
+      // Untuk riwayat, kita simpan default (Indonesia) atau bisa disesuaikan
+      // Di sini saya simpan nama asli (Indonesia) agar konsisten di database riwayat
       final nama = widget.rambu['nama'] ?? 'Rambu Tanpa Nama';
       final kategori = widget.rambu['kategori'] ?? 'Tidak Diketahui';
       final gambarUrl = _getImageUrl();
       
-      // Simpan ke riwayat (gambar dari URL bukan file lokal)
       await RiwayatService.addRiwayat(nama, kategori, gambarUrl);
-      
-      debugPrint('✅ Berhasil menyimpan ke riwayat: $nama');
     } catch (e) {
       debugPrint('❌ Gagal menyimpan riwayat: $e');
     }
@@ -45,11 +45,20 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
   void _initTts() async {
     flutterTts = FlutterTts();
     
-    await flutterTts.setLanguage("id-ID");
-    await flutterTts.setSpeechRate(0.4); 
+    // Default setup, bahasa akan diset ulang saat tombol ditekan
+    await flutterTts.setSpeechRate(0.5); // 0.4 agak lambat untuk Inggris, 0.5 standar
     await flutterTts.setPitch(1.0);
     await flutterTts.setVolume(1.0);
-    await flutterTts.setQueueMode(1); 
+    
+    // iOS/Android specific settings
+    await flutterTts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback,
+        [
+          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+          IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+          IosTextToSpeechAudioCategoryOptions.mixWithOthers
+        ],
+        IosTextToSpeechAudioMode.defaultMode
+    );
 
     flutterTts.setStartHandler(() {
       setState(() {
@@ -78,9 +87,32 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
     }
 
     try {
-      String namaRambu = (widget.rambu['nama'] ?? '').replaceAll('\n', ' ');
-      String deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
-      String textToSpeak = "Rambu $namaRambu, yaitu $deskripsi";
+      // 1. Cek Bahasa Saat Ini
+      final languageProvider = Provider.of<LanguageProvider>(context, listen: false);
+      final currentLang = languageProvider.locale.languageCode;
+      
+      // 2. Ambil Teks Sesuai Bahasa
+      String namaRambu, deskripsi, textToSpeak;
+
+      if (currentLang == 'en') {
+        namaRambu = (widget.rambu['nama_en'] ?? widget.rambu['nama'] ?? '').replaceAll('\n', ' ');
+        deskripsi = widget.rambu['deskripsi_en'] ?? widget.rambu['deskripsi'] ?? 'No description available';
+        
+        // Format kalimat Inggris
+        textToSpeak = "This is $namaRambu sign. $deskripsi";
+        
+        // Set TTS ke Bahasa Inggris
+        await flutterTts.setLanguage("en-US");
+      } else {
+        namaRambu = (widget.rambu['nama'] ?? '').replaceAll('\n', ' ');
+        deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
+        
+        // Format kalimat Indonesia
+        textToSpeak = "Rambu $namaRambu, yaitu $deskripsi";
+        
+        // Set TTS ke Bahasa Indonesia
+        await flutterTts.setLanguage("id-ID");
+      }
 
       await flutterTts.speak(textToSpeak);
     } catch (e) {
@@ -120,9 +152,29 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final nama = widget.rambu['nama'] ?? 'Tanpa Nama';
-    final kategori = widget.rambu['kategori'] ?? '-';
-    final deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
+    
+    // AMBIL PROVIDER BAHASA
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final currentLang = languageProvider.locale.languageCode;
+
+    // LOGIKA TAMPILAN DATA
+    String nama, kategori, deskripsi;
+
+    if (currentLang == 'en') {
+      // Bahasa Inggris
+      nama = widget.rambu['nama_en'] ?? widget.rambu['nama'] ?? 'No Name';
+      
+      String rawCat = widget.rambu['kategori_en'] ?? widget.rambu['kategori'] ?? '-';
+      kategori = rawCat; // Kategori di DB Inggris sudah "Warning", "Prohibition" dll.
+      
+      deskripsi = widget.rambu['deskripsi_en'] ?? widget.rambu['deskripsi'] ?? 'No description available';
+    } else {
+      // Bahasa Indonesia (Default)
+      nama = widget.rambu['nama'] ?? 'Tanpa Nama';
+      kategori = widget.rambu['kategori'] ?? '-';
+      deskripsi = widget.rambu['deskripsi'] ?? 'Tidak ada deskripsi';
+    }
+
     final imageUrl = _getImageUrl();
 
     return Scaffold(
@@ -165,7 +217,7 @@ class _DetailRambuScreenState extends State<DetailRambuScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 2),
+                      color: Colors.black.withValues(alpha: 0.2), // Ganti withValues ke withOpacity agar kompatibel
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
