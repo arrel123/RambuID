@@ -50,7 +50,7 @@ Base = declarative_base()
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
-# --- MODEL DATABASE (UPDATED: Tambah Kolom Bahasa Inggris) ---
+# --- MODEL DATABASE ---
 class Rambu(Base):
     __tablename__ = "rambu"
     id = Column(Integer, primary_key=True, index=True)
@@ -59,7 +59,7 @@ class Rambu(Base):
     deskripsi = Column(Text, nullable=True)
     kategori = Column(String, nullable=False)
     
-    # [BARU] Kolom Bahasa Inggris
+    # Kolom Bahasa Inggris
     nama_en = Column(String, nullable=True)
     deskripsi_en = Column(Text, nullable=True)
     kategori_en = Column(String, nullable=True)
