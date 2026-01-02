@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Pastikan package provider sudah diinstall
+import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../l10n/app_localizations.dart';
-import '../providers/language_provider.dart'; // Pastikan path ini sesuai dengan project Anda
+import '../providers/language_provider.dart';
 import 'detailrambu.dart';
 
 class EdukasiPage extends StatefulWidget {
   final String? initialCategory;
+  final int userId; // --- TAMBAHAN: Menerima UserId dari Home ---
 
-  const EdukasiPage({super.key, this.initialCategory});
+  // Default userId 0 jika tidak dikirim
+  const EdukasiPage({super.key, this.initialCategory, this.userId = 0});
 
   @override
   State<EdukasiPage> createState() => _EdukasiPageState();
@@ -22,7 +24,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  // Mendapatkan Tab Kategori sesuai Bahasa (Lokal)
   List<String> get tabs => [
     AppLocalizations.of(context).translate('category_all'),
     AppLocalizations.of(context).translate('category_warning'),
@@ -31,7 +32,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
     AppLocalizations.of(context).translate('category_command'),
   ];
 
-  // Mapping Tab ke Kategori Database (Database masih pakai ID 'Peringatan' dsb)
   Map<String, String> get categoryMapping => {
     AppLocalizations.of(context).translate('category_all'): 'Semua',
     AppLocalizations.of(context).translate('category_warning'): 'Peringatan',
@@ -60,7 +60,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
   Future<void> _fetchRambuData() async {
     try {
       final result = await ApiService.getRambuList();
-      
       if (mounted) {
         setState(() {
           if (result['success']) {
@@ -94,7 +93,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
     List<dynamic> filtered = _rambuList;
     final dbCategory = categoryMapping[selectedTab] ?? 'Semua';
 
-    // Filter Kategori
     if (dbCategory != 'Semua') {
       filtered = filtered.where((item) {
         final kategoriBackend = (item['kategori'] ?? '').toString().toLowerCase();
@@ -103,10 +101,8 @@ class _EdukasiPageState extends State<EdukasiPage> {
       }).toList();
     }
 
-    // Filter Search
     if (searchQuery.isNotEmpty) {
       filtered = filtered.where((item) {
-        // Cari di nama Indo maupun Inggris
         final nama = (item['nama'] ?? '').toString().toLowerCase();
         final namaEn = (item['nama_en'] ?? '').toString().toLowerCase();
         final query = searchQuery.toLowerCase();
@@ -121,7 +117,39 @@ class _EdukasiPageState extends State<EdukasiPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DetailRambuScreen(rambu: rambu),
+        // --- PERBAIKAN: Mengirim userId ke halaman detail ---
+        builder: (context) => DetailRambuScreen(
+          rambu: rambu,
+          userId: widget.userId, 
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 50,
+            height: 50,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD6D588)),
+              strokeWidth: 4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            "Memuat data rambu...",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -129,46 +157,28 @@ class _EdukasiPageState extends State<EdukasiPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    
-    // 1. AMBIL BAHASA SAAT INI DARI PROVIDER
     final languageProvider = Provider.of<LanguageProvider>(context);
     final currentLang = languageProvider.locale.languageCode;
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: const Color(0xFFD6D588),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pushReplacementNamed(
-              context,
-              '/home',
-              arguments: {
-                'userId': 0,
-                'username': '',
-                'initialIndex': 0, // Kembali ke Beranda
-              },
-            );
-          },
-        ),
+        automaticallyImplyLeading: false, 
         title: Text(
           l10n.translate('sign_list'),
           style: const TextStyle(
             color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Poppins',
           ),
-        ),
-        iconTheme: const IconThemeData(
-          color: Colors.black,
         ),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // Tab Bar
           Container(
             color: Colors.white,
             child: SingleChildScrollView(
@@ -178,29 +188,25 @@ class _EdukasiPageState extends State<EdukasiPage> {
                   bool isSelected = selectedTab == tab;
                   return GestureDetector(
                     onTap: () {
-                      setState(() {
-                        selectedTab = tab;
-                      });
+                      setState(() => selectedTab = tab);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
                             color: isSelected ? Colors.black : Colors.transparent,
-                            width: 2,
+                            width: 3,
                           ),
                         ),
                       ),
                       child: Text(
                         tab,
                         style: TextStyle(
-                          color: Colors.black,
+                          color: isSelected ? Colors.black : Colors.grey[600],
                           fontSize: 14,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontFamily: 'Poppins',
                         ),
                       ),
                     ),
@@ -210,87 +216,74 @@ class _EdukasiPageState extends State<EdukasiPage> {
             ),
           ),
 
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                });
+                setState(() => searchQuery = value);
               },
               decoration: InputDecoration(
                 hintText: l10n.translate('search_sign_name'),
-                hintStyle: const TextStyle(color: Colors.black),
-                prefixIcon: const Icon(Icons.search, color: Colors.black),
+                hintStyle: TextStyle(color: Colors.grey[600], fontFamily: 'Poppins'),
+                prefixIcon: const Icon(Icons.search, color: Colors.black54),
                 filled: true,
-                fillColor: const Color(0xFFD6D588),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 20),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Color(0xFFD6D588), width: 1.5),
                 ),
               ),
             ),
           ),
 
-          // Content Grid
           Expanded(
             child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFD6D588),
-                    ),
-                  )
+                ? _buildLoadingState()
                 : _errorMessage != null
-                    ? Center(child: Text(_errorMessage!))
+                    ? Center(child: Text(_errorMessage!, style: const TextStyle(fontFamily: 'Poppins')))
                     : getFilteredData().isEmpty
-                        ? Center(child: Text(l10n.translate('data_not_found')))
+                        ? Center(child: Text(l10n.translate('data_not_found'), style: const TextStyle(fontFamily: 'Poppins')))
                         : GridView.builder(
-                            padding: const EdgeInsets.only(
-                              left: 16, 
-                              right: 16, 
-                              top: 0, 
-                              bottom: 100 
-                            ),
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 0.8,
+                              childAspectRatio: 0.75,
                             ),
                             itemCount: getFilteredData().length,
                             itemBuilder: (context, index) {
                               final item = getFilteredData()[index];
                               final imageUrl = _getImageUrl(item['gambar_url']);
                               
-                              // 2. LOGIKA PEMILIHAN NAMA BERDASARKAN BAHASA
-                              String namaRambu;
-                              if (currentLang == 'en') {
-                                // Jika bahasa Inggris, ambil nama_en. Jika null, fallback ke nama Indo
-                                namaRambu = item['nama_en'] ?? item['nama'] ?? 'No Name';
-                              } else {
-                                // Jika bahasa Indonesia
-                                namaRambu = item['nama'] ?? 'Tanpa Nama';
-                              }
+                              String namaRambu = (currentLang == 'en') 
+                                  ? (item['nama_en'] ?? item['nama'] ?? 'No Name')
+                                  : (item['nama'] ?? 'Tanpa Nama');
 
                               return GestureDetector(
                                 onTap: () => _navigateToDetail(context, item),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 8,
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 5,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(
+                                        flex: 3,
                                         child: Padding(
                                           padding: const EdgeInsets.all(12.0),
                                           child: imageUrl.isNotEmpty
@@ -298,21 +291,39 @@ class _EdukasiPageState extends State<EdukasiPage> {
                                                   imageUrl,
                                                   fit: BoxFit.contain,
                                                   errorBuilder: (ctx, err, stack) =>
-                                                      const Icon(Icons.broken_image, size: 40),
+                                                      const Icon(Icons.broken_image, color: Colors.grey),
                                                 )
-                                              : const Icon(Icons.image_not_supported, size: 40),
+                                              : const Icon(Icons.image, color: Colors.grey),
                                         ),
                                       ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(
-                                          namaRambu, // <-- Variable ini sekarang dinamis
-                                          textAlign: TextAlign.center,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
+                                      Expanded(
+                                        flex: 2,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[50],
+                                            borderRadius: const BorderRadius.only(
+                                              bottomLeft: Radius.circular(12),
+                                              bottomRight: Radius.circular(12),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                namaRambu,
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  height: 1.2,
+                                                  color: Colors.black87,
+                                                  fontFamily: 'Poppins',
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),

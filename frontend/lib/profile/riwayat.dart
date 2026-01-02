@@ -28,13 +28,13 @@ class _RiwayatPageState extends State<RiwayatPage> {
     });
   }
 
-  // --- FUNGSI BARU: Menghapus satu item ---
+  // --- FUNGSI: Menghapus satu item ---
   Future<void> _deleteItem(int index) async {
     await RiwayatService.deleteRiwayat(index);
     _loadRiwayat();
   }
 
-  // --- FUNGSI BARU: Konfirmasi & Hapus Semua ---
+  // --- FUNGSI: Konfirmasi & Hapus Semua ---
   Future<void> _confirmDeleteAll() async {
     showDialog(
       context: context,
@@ -63,10 +63,8 @@ class _RiwayatPageState extends State<RiwayatPage> {
   Future<void> _processDeleteAll() async {
     setState(() => _isLoading = true);
     
-    // PENTING: Idealnya tambahkan method 'clearAllRiwayat' di RiwayatService Anda.
-    // Jika belum ada, kita lakukan loop penghapusan manual dari UI (kurang efisien tapi bekerja):
     try {
-      // Loop menghapus dari index terakhir ke 0 agar index tidak bergeser
+      // Loop menghapus dari index terakhir ke 0
       for (int i = _riwayatList.length - 1; i >= 0; i--) {
         await RiwayatService.deleteRiwayat(i);
       }
@@ -86,7 +84,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
     }
   }
 
-  // FUNGSI GAMBAR (Sama seperti sebelumnya)
+  // FUNGSI GAMBAR
   Widget _buildImage(String? path) {
     if (path == null || path.isEmpty) {
       return const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 30);
@@ -111,198 +109,233 @@ class _RiwayatPageState extends State<RiwayatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          'Riwayat',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFD6D588),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _riwayatList.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.history, size: 80, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text("Belum ada riwayat deteksi", style: TextStyle(color: Colors.grey)),
-                    ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // --- HEADER CUSTOM DENGAN TOMBOL BACK ---
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFD6D588), // Warna Header
+              ),
+              child: Row(
+                children: [
+                  // TOMBOL KEMBALI (BACK)
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                    // Style tombol putih agar terlihat jelas
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(8),
+                    ),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _riwayatList.length,
-                  itemBuilder: (context, index) {
-                    final item = _riwayatList[index];
-                    final String timestamp = item['timestamp'] ?? DateTime.now().toIso8601String();
-                    final DateTime currentDate = DateTime.parse(timestamp);
+                  const SizedBox(width: 16),
+                  
+                  // JUDUL HALAMAN
+                  const Expanded(
+                    child: Text(
+                      'Riwayat',
+                      // textAlign: TextAlign.center, // Opsional: jika ingin judul di tengah
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500, // Medium (Tipis)
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  
+                  // Dummy Icon agar judul benar-benar di tengah (opsional, jika pakai TextAlign.center)
+                  // const SizedBox(width: 48), 
+                ],
+              ),
+            ),
+            // ---------------------------------------------
 
-                    // Logika grouping tanggal
-                    bool showHeader = false;
-                    if (index == 0) {
-                      showHeader = true;
-                    } else {
-                      final prevItem = _riwayatList[index - 1];
-                      final prevDate = DateTime.parse(prevItem['timestamp']);
-                      if (currentDate.day != prevDate.day ||
-                          currentDate.month != prevDate.month ||
-                          currentDate.year != prevDate.year) {
-                        showHeader = true;
-                      }
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // --- HEADER TANGGAL YANG DIMODIFIKASI ---
-                        if (showHeader) ...[
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween, // Agar tombol ke kanan mentok
-                            crossAxisAlignment: CrossAxisAlignment.end, // Agar teks dan tombol sejajar bawah
+            // CONTENT
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _riwayatList.isEmpty
+                      ? const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Bagian Kiri: Bulan & Tanggal
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _getMonth(currentDate),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  Text(
-                                    _getDate(currentDate),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Bagian Kanan: Tombol Hapus Semua
-                              // Hanya dimunculkan jika index == 0 (Paling Atas)
-                              if (index == 0)
-                                TextButton.icon(
-                                  onPressed: _confirmDeleteAll,
-                                  icon: const Icon(Icons.delete_sweep, color: Colors.red, size: 20),
-                                  label: const Text(
-                                    "Hapus Semua",
-                                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                                  ),
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: const Size(50, 30),
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    alignment: Alignment.centerRight,
-                                  ),
-                                ),
+                              Icon(Icons.history, size: 80, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text("Belum ada riwayat deteksi", style: TextStyle(color: Colors.grey)),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          // Garis pembatas tipis agar lebih rapi (opsional)
-                          Divider(color: Colors.grey.shade300, height: 1),
-                          const SizedBox(height: 12),
-                        ],
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _riwayatList.length,
+                          itemBuilder: (context, index) {
+                            final item = _riwayatList[index];
+                            final String timestamp = item['timestamp'] ?? DateTime.now().toIso8601String();
+                            final DateTime currentDate = DateTime.parse(timestamp);
 
-                        // Card Item
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade300),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              )
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
+                            // Logika grouping tanggal
+                            bool showHeader = false;
+                            if (index == 0) {
+                              showHeader = true;
+                            } else {
+                              final prevItem = _riwayatList[index - 1];
+                              final prevDate = DateTime.parse(prevItem['timestamp']);
+                              if (currentDate.day != prevDate.day ||
+                                  currentDate.month != prevDate.month ||
+                                  currentDate.year != prevDate.year) {
+                                showHeader = true;
+                              }
+                            }
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Box Gambar
-                                Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: _buildImage(item['imagePath']),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                // Teks
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                // Header Tanggal
+                                if (showHeader) ...[
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text(
-                                        item['nama'] ?? 'Tanpa Nama',
-                                        style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(
-                                            _getCategoryIcon(item['kategori']),
-                                            size: 14,
-                                            color: Colors.grey.shade600,
+                                          Text(
+                                            _getMonth(currentDate),
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
                                           ),
-                                          const SizedBox(width: 4),
-                                          Flexible(
-                                            child: Text(
-                                              item['kategori'] ?? 'Kategori',
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: Colors.grey.shade600),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                          Text(
+                                            _getDate(currentDate),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
                                             ),
                                           ),
                                         ],
                                       ),
+                                      if (index == 0)
+                                        TextButton.icon(
+                                          onPressed: _confirmDeleteAll,
+                                          icon: const Icon(Icons.delete_sweep, color: Colors.red, size: 20),
+                                          label: const Text(
+                                            "Hapus Semua",
+                                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                          ),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            minimumSize: const Size(50, 30),
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            alignment: Alignment.centerRight,
+                                          ),
+                                        ),
                                     ],
                                   ),
-                                ),
-                                // Tombol Delete Item Satuan
-                                IconButton(
-                                  onPressed: () => _deleteItem(index),
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
+                                  const SizedBox(height: 8),
+                                  Divider(color: Colors.grey.shade300, height: 1),
+                                  const SizedBox(height: 12),
+                                ],
+
+                                // Card Item
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ],
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Row(
+                                      children: [
+                                        // Box Gambar
+                                        Container(
+                                          width: 50,
+                                          height: 50,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade200,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: _buildImage(item['imagePath']),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        // Teks
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item['nama'] ?? 'Tanpa Nama',
+                                                style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.black),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    _getCategoryIcon(item['kategori']),
+                                                    size: 14,
+                                                    color: Colors.grey.shade600,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Flexible(
+                                                    child: Text(
+                                                      item['kategori'] ?? 'Kategori',
+                                                      style: TextStyle(
+                                                          fontSize: 13,
+                                                          color: Colors.grey.shade600),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Tombol Delete Item Satuan
+                                        IconButton(
+                                          onPressed: () => _deleteItem(index),
+                                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
+                            );
+                          },
                         ),
-                      ],
-                    );
-                  },
-                ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  // Helper Icon (Sama seperti kode asli)
   IconData _getCategoryIcon(String? kategori) {
     if (kategori == null) return Icons.info_outline;
     final kat = kategori.toLowerCase();

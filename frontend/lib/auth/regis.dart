@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:async'; // Import ini diperlukan untuk Timer
+import 'dart:async'; 
 import '../services/api_service.dart';
 
-// --- Custom Clipper (Sama seperti Login) ---
+// --- Custom Clipper ---
 class ConvexClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -50,25 +50,21 @@ class _RegisPageState extends State<RegisPage> {
     super.dispose();
   }
 
-  // --- FUNGSI BARU: Menampilkan Dialog Sukses Cantik ---
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
-      barrierDismissible: false, // User tidak bisa menutup dengan tap di luar
+      barrierDismissible: false,
       builder: (BuildContext context) {
-        // Timer untuk menutup dialog otomatis dan pindah halaman setelah 2 detik
         Timer(const Duration(seconds: 2), () {
           if (mounted) {
-            // Tutup dialog terlebih dahulu
             Navigator.of(context).pop();
-            // Lalu pindah ke halaman login
             Navigator.pushReplacementNamed(context, '/login');
           }
         });
 
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24), // Sudut yang sangat membulat
+            borderRadius: BorderRadius.circular(24),
           ),
           elevation: 0,
           backgroundColor: Colors.transparent,
@@ -87,13 +83,12 @@ class _RegisPageState extends State<RegisPage> {
               ],
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Agar dialog menyesuaikan konten
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. Icon Centang Biru Besar
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: const BoxDecoration(
-                    color: Color(0xFF64B5F6), // Warna biru cerah mirip gambar
+                    color: Color(0xFF64B5F6),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -103,8 +98,6 @@ class _RegisPageState extends State<RegisPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
-                // 2. Judul Besar
                 const Text(
                   "Pendaftaran Berhasil",
                   textAlign: TextAlign.center,
@@ -116,8 +109,6 @@ class _RegisPageState extends State<RegisPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // 3. Subtitle Pesan (Pesan dari API atau default)
                 Text(
                   message,
                   textAlign: TextAlign.center,
@@ -135,7 +126,6 @@ class _RegisPageState extends State<RegisPage> {
       },
     );
   }
-  // ---------------------------------------------------
 
   void _handleRegistration() async {
     if (_formKey.currentState!.validate()) {
@@ -144,9 +134,6 @@ class _RegisPageState extends State<RegisPage> {
       final nama = _nameController.text.trim();
       final username = _emailController.text.trim();
       final password = _passwordController.text;
-
-      // Simulasikan delay jaringan agar terlihat loading (opsional)
-      // await Future.delayed(const Duration(seconds: 1));
 
       final result = await ApiService.register(
         username,
@@ -159,21 +146,16 @@ class _RegisPageState extends State<RegisPage> {
       if (result['success']) {
         final data = result['data'];
         if (mounted) {
-          // --- BAGIAN YANG DIUBAH ---
-          // Menggunakan dialog cantik sebagai pengganti SnackBar
           String welcomeMessage = data['message'] ?? "Selamat datang, $username!";
           _showSuccessDialog(welcomeMessage);
-          // --------------------------
         }
       } else {
         if (mounted) {
-          // Untuk error, SnackBar merah masih oke, atau mau dibuat dialog error juga?
-          // Untuk sekarang saya biarkan SnackBar untuk error.
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? "Pendaftaran gagal!"),
               backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating, // Agar sedikit lebih modern
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -184,13 +166,12 @@ class _RegisPageState extends State<RegisPage> {
   @override
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
-    // Header sama dengan halaman login untuk konsistensi
     final double headerHeight = screenSize.height * 0.35;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      resizeToAvoidBottomInset:
-          false, // Kunci Layout agar tidak naik saat keyboard muncul
+      // PERBAIKAN 1: Ubah ke true
+      resizeToAvoidBottomInset: true,
       body: SizedBox(
         width: double.infinity,
         height: screenSize.height,
@@ -252,133 +233,136 @@ class _RegisPageState extends State<RegisPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
+                // PERBAIKAN 2: Bungkus Form dengan SingleChildScrollView
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
 
-                      // NAMA
-                      _buildLabel("NAMA LENGKAP"),
-                      const SizedBox(height: 5),
-                      _buildTextField(
-                        controller: _nameController,
-                        hint: "Nama Lengkap Anda",
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      // EMAIL
-                      _buildLabel("EMAIL"),
-                      const SizedBox(height: 5),
-                      _buildTextField(
-                        controller: _emailController,
-                        hint: "Email Aktif",
-                        isEmail: true,
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      // PASSWORD
-                      _buildLabel("KATA SANDI"),
-                      const SizedBox(height: 5),
-                      _buildPasswordField(
-                        controller: _passwordController,
-                        hint: "Minimal 6 karakter",
-                        isObscure: _obscurePassword,
-                        onToggle: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
+                        // NAMA
+                        _buildLabel("NAMA LENGKAP"),
+                        const SizedBox(height: 5),
+                        _buildTextField(
+                          controller: _nameController,
+                          hint: "Nama Lengkap Anda",
                         ),
-                      ),
 
-                      const SizedBox(height: 15),
+                        const SizedBox(height: 15),
 
-                      // CONFIRM PASSWORD
-                      _buildLabel("KONFIRMASI SANDI"),
-                      const SizedBox(height: 5),
-                      _buildPasswordField(
-                        controller: _confirmController,
-                        hint: "Ulangi kata sandi",
-                        isObscure: _obscureConfirmPassword,
-                        onToggle: () => setState(
-                          () => _obscureConfirmPassword =
-                              !_obscureConfirmPassword,
+                        // EMAIL
+                        _buildLabel("EMAIL"),
+                        const SizedBox(height: 5),
+                        _buildTextField(
+                          controller: _emailController,
+                          hint: "Email Aktif",
+                          isEmail: true,
                         ),
-                        isConfirm: true,
-                      ),
 
-                      const Spacer(), // Mendorong tombol ke bawah
-                      // LINK LOGIN (DI ATAS TOMBOL)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            "Sudah punya akun? ",
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
-                              fontFamily: 'Poppins',
-                            ),
+                        const SizedBox(height: 15),
+
+                        // PASSWORD
+                        _buildLabel("KATA SANDI"),
+                        const SizedBox(height: 5),
+                        _buildPasswordField(
+                          controller: _passwordController,
+                          hint: "Minimal 6 karakter",
+                          isObscure: _obscurePassword,
+                          onToggle: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
                           ),
-                          GestureDetector(
-                            onTap: () => Navigator.pushNamed(context, '/login'),
-                            child: const Text(
-                              "MASUK",
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        // CONFIRM PASSWORD
+                        _buildLabel("KONFIRMASI SANDI"),
+                        const SizedBox(height: 5),
+                        _buildPasswordField(
+                          controller: _confirmController,
+                          hint: "Ulangi kata sandi",
+                          isObscure: _obscureConfirmPassword,
+                          onToggle: () => setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          ),
+                          isConfirm: true,
+                        ),
+
+                        // PERBAIKAN 3: Ganti Spacer() dengan SizedBox agar bisa scroll
+                        const SizedBox(height: 30),
+
+                        // LINK LOGIN (DI ATAS TOMBOL)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Sudah punya akun? ",
                               style: TextStyle(
-                                color: Color(0xFFD6D588),
-                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
                                 fontSize: 14,
                                 fontFamily: 'Poppins',
-                                // decoration: TextDecoration.underline, // Garis bawah dihapus
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // TOMBOL DAFTAR
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleRegistration,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD6D588),
-                            foregroundColor: const Color(0xFF2C3E50),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.black87,
-                                  ),
-                                )
-                              : const Text(
-                                  "DAFTAR",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1,
-                                    fontFamily: 'Poppins',
-                                  ),
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(context, '/login'),
+                              child: const Text(
+                                "MASUK",
+                                style: TextStyle(
+                                  color: Color(0xFFD6D588),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  fontFamily: 'Poppins',
                                 ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
 
-                      SizedBox(
-                        height: MediaQuery.of(context).padding.bottom + 20,
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+
+                        // TOMBOL DAFTAR
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _handleRegistration,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD6D588),
+                              foregroundColor: const Color(0xFF2C3E50),
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black87,
+                                    ),
+                                  )
+                                : const Text(
+                                    "DAFTAR",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        // Tambahan padding bawah agar aman saat scroll
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
               ),
