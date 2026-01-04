@@ -62,48 +62,55 @@ class _EditProfilPageState extends State<EditProfilPage> {
     super.dispose();
   }
 
-  // --- FUNGSI POP-UP GAYA LOGIN PAGE (PENGGANTI ALERT HIJAU) ---
+  // --- FUNGSI POP-UP SUKSES (STYLE HIJAU SERAGAM) ---
   void _showSuccessDialog(Map<String, dynamic> updatedData) {
+    // Cek Bahasa
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+
     showDialog(
       context: context,
       barrierDismissible: false, // User tidak bisa klik luar
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.white,
+          // Shape Radius 16 (Sesuai Riwayat & Login)
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
-          // Padding konten disesuaikan agar mirip Login Page
-          contentPadding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
+          // Padding 24 (Sesuai Riwayat & Login)
+          contentPadding: const EdgeInsets.all(24),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 1. Icon Checklis Biru
+              // 1. Icon Checklis Solid & Warna HIJAU TEMA
               const Icon(
-                Icons.check_circle_outline,
-                color: Color(0xFF64B5F6), // Warna Biru Muda
-                size: 60,
+                Icons.check_circle, // Gunakan yang solid
+                color: Color(0xFFD6D588), // Warna Hijau Tema RambuID
+                size: 64, // Ukuran Besar
               ),
               const SizedBox(height: 16),
               
-              // 2. Judul Besar
-              const Text(
-                'Berhasil Disimpan', // Teks Pengganti
-                style: TextStyle(
-                  fontSize: 22,
+              // 2. Judul Besar (Bilingual)
+              Text(
+                isEnglish ? 'Saved Successfully' : 'Berhasil Disimpan',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF555555), // Abu Gelap
+                  fontFamily: 'Poppins',
+                  color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               
-              // 3. Subtitle
-              const Text(
-                'Mengarahkan kembali ke profil...',
+              // 3. Subtitle (Bilingual)
+              Text(
+                isEnglish ? 'Redirecting back to profile...' : 'Mengarahkan kembali ke profil...',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF777777), // Abu Terang
+                  color: Colors.grey,
+                  fontFamily: 'Poppins',
                 ),
               ),
             ],
@@ -202,7 +209,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
       };
 
       if (mounted) {
-        // TAMPILKAN POP-UP (Tanpa SnackBar Hijau di sini)
+        // TAMPILKAN POP-UP HIJAU
         _showSuccessDialog(updatedData);
       }
     } else {
