@@ -7,9 +7,8 @@ import 'detailrambu.dart';
 
 class EdukasiPage extends StatefulWidget {
   final String? initialCategory;
-  final int userId; // --- TAMBAHAN: Menerima UserId dari Home ---
+  final int userId; 
 
-  // Default userId 0 jika tidak dikirim
   const EdukasiPage({super.key, this.initialCategory, this.userId = 0});
 
   @override
@@ -17,7 +16,8 @@ class EdukasiPage extends StatefulWidget {
 }
 
 class _EdukasiPageState extends State<EdukasiPage> {
-  String selectedTab = 'Semua';
+  // Inisialisasi awal string kosong agar tidak konflik bahasa
+  String selectedTab = ''; 
   String searchQuery = '';
   
   List<dynamic> _rambuList = [];
@@ -44,7 +44,9 @@ class _EdukasiPageState extends State<EdukasiPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // --- FIX BUG NAVIGASI GARIS BAWAH ---
       if (widget.initialCategory != null) {
+        // Jika ada kategori spesifik dari Home (misal diklik menu Peringatan)
         final entry = categoryMapping.entries.firstWhere(
           (e) => e.value == widget.initialCategory,
           orElse: () => MapEntry(tabs.first, 'Semua'),
@@ -52,7 +54,14 @@ class _EdukasiPageState extends State<EdukasiPage> {
         setState(() {
           selectedTab = entry.key;
         });
+      } else {
+        // Jika buka halaman biasa, SET default ke Tab Pertama (Sesuai Bahasa)
+        // Ini memastikan "All" atau "Semua" terpilih dan bergaris bawah
+        setState(() {
+          selectedTab = tabs.first; 
+        });
       }
+      
       _fetchRambuData();
     });
   }
@@ -91,6 +100,12 @@ class _EdukasiPageState extends State<EdukasiPage> {
 
   List<dynamic> getFilteredData() {
     List<dynamic> filtered = _rambuList;
+    
+    // Pastikan selectedTab tidak kosong sebelum mapping
+    if (selectedTab.isEmpty && tabs.isNotEmpty) {
+       selectedTab = tabs.first;
+    }
+
     final dbCategory = categoryMapping[selectedTab] ?? 'Semua';
 
     if (dbCategory != 'Semua') {
@@ -117,7 +132,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        // --- PERBAIKAN: Mengirim userId ke halaman detail ---
         builder: (context) => DetailRambuScreen(
           rambu: rambu,
           userId: widget.userId, 
@@ -127,6 +141,8 @@ class _EdukasiPageState extends State<EdukasiPage> {
   }
 
   Widget _buildLoadingState() {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -141,7 +157,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
           ),
           const SizedBox(height: 20),
           Text(
-            "Memuat data rambu...",
+            isEnglish ? "Loading sign data..." : "Memuat data rambu...",
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
@@ -185,7 +201,14 @@ class _EdukasiPageState extends State<EdukasiPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: tabs.map((tab) {
+                  // Bandingkan tab saat ini dengan tab yang sedang dirender
                   bool isSelected = selectedTab == tab;
+                  
+                  // Fallback: Jika selectedTab masih kosong (loading awal), anggap tab pertama aktif
+                  if (selectedTab.isEmpty && tab == tabs.first) {
+                    isSelected = true;
+                  }
+
                   return GestureDetector(
                     onTap: () {
                       setState(() => selectedTab = tab);

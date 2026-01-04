@@ -5,17 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // KONFIGURASI KONEKSI
-  static const String _myLaptopIp = '192.168.1.3'; // Pastikan IP ini benar sesuai laptop Anda
-  static const String _port = '8000';
+  // --- KONFIGURASI KONEKSI VPS NAT ---
+  // UPDATE: Menggunakan IP Publik VPS dan Port Forwarding Anda
+  static const String _myLaptopIp = '151.243.222.93'; 
+  static const String _port = '56789';
 
   static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:$_port';
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://$_myLaptopIp:$_port'; 
-    }
+    // Kita paksa semua platform (Android/Web) menggunakan VPS agar datanya sinkron
     return 'http://$_myLaptopIp:$_port';
   }
 
@@ -35,7 +31,6 @@ class ApiService {
         
         // --- DEBUGGING: CEK APAKAH ADA BAHASA INGGRIS ---
         if (data is List && data.isNotEmpty) {
-          // Debugging log (bisa dihapus nanti jika sudah fix)
           debugPrint("🔍 Cek Data Pertama dari Server:");
           debugPrint("   Nama Indo: ${data[0]['nama']}");
           debugPrint("   Nama En: ${data[0]['nama_en']}"); 

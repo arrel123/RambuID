@@ -28,30 +28,146 @@ class _RiwayatPageState extends State<RiwayatPage> {
     });
   }
 
-  // --- FUNGSI: Menghapus satu item ---
-  Future<void> _deleteItem(int index) async {
-    await RiwayatService.deleteRiwayat(index);
-    _loadRiwayat();
+  // --- HELPER: Loading Cantik dengan Teks ---
+  Widget _buildLoadingState() {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 50,
+            height: 50,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD6D588)),
+              strokeWidth: 4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            isEnglish ? "Loading history..." : "Memuat riwayat...",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  // --- FUNGSI: Konfirmasi & Hapus Semua ---
-  Future<void> _confirmDeleteAll() async {
+  // --- HELPER: Pop-up Sukses ---
+  void _showSuccessPopup(String message) {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Color(0xFFD6D588), size: 64),
+              const SizedBox(height: 16),
+              Text(
+                isEnglish ? "Success!" : "Berhasil!",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  // --- FUNGSI HAPUS ---
+  Future<void> _confirmDeleteItem(int index) async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Hapus Semua Riwayat?"),
-          content: const Text("Tindakan ini tidak dapat dibatalkan. Semua data riwayat akan hilang."),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            isEnglish ? "Delete This Item?" : "Hapus Item Ini?",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(isEnglish ? "This history item will be permanently deleted." : "Item riwayat ini akan dihapus permanen."),
           actions: [
             TextButton(
-              child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+              child: Text(isEnglish ? "Cancel" : "Batal", style: const TextStyle(color: Colors.grey)),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            TextButton(
-              child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(isEnglish ? "Delete" : "Hapus", style: const TextStyle(color: Colors.white)),
               onPressed: () async {
-                Navigator.of(context).pop(); // Tutup dialog
-                await _processDeleteAll(); // Jalankan penghapusan
+                Navigator.of(context).pop();
+                await _processDeleteItem(index);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _processDeleteItem(int index) async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    await RiwayatService.deleteRiwayat(index);
+    await _loadRiwayat();
+    if (mounted) {
+      _showSuccessPopup(isEnglish ? "Item successfully deleted." : "Item berhasil dihapus.");
+    }
+  }
+
+  Future<void> _confirmDeleteAll() async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            isEnglish ? "Delete All History?" : "Hapus Semua Riwayat?",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(isEnglish ? "This action cannot be undone. All history data will be lost." : "Tindakan ini tidak dapat dibatalkan. Semua data riwayat akan hilang."),
+          actions: [
+            TextButton(
+              child: Text(isEnglish ? "Cancel" : "Batal", style: const TextStyle(color: Colors.grey)),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text(isEnglish ? "Delete All" : "Hapus Semuanya", style: const TextStyle(color: Colors.white)),
+              onPressed: () async {
+                Navigator.of(context).pop(); 
+                await _processDeleteAll(); 
               },
             ),
           ],
@@ -62,20 +178,14 @@ class _RiwayatPageState extends State<RiwayatPage> {
 
   Future<void> _processDeleteAll() async {
     setState(() => _isLoading = true);
-    
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     try {
-      // Loop menghapus dari index terakhir ke 0
       for (int i = _riwayatList.length - 1; i >= 0; i--) {
         await RiwayatService.deleteRiwayat(i);
       }
-      
-      // Refresh data
       await _loadRiwayat();
-      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Semua riwayat berhasil dihapus")),
-        );
+        _showSuccessPopup(isEnglish ? "All history has been deleted." : "Semua riwayat berhasil dihapus.");
       }
     } catch (e) {
       debugPrint("Error deleting all: $e");
@@ -84,7 +194,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
     }
   }
 
-  // FUNGSI GAMBAR
+  // --- UI COMPONENTS ---
   Widget _buildImage(String? path) {
     if (path == null || path.isEmpty) {
       return const Icon(Icons.image_not_supported_outlined, color: Colors.grey, size: 30);
@@ -107,65 +217,59 @@ class _RiwayatPageState extends State<RiwayatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // --- HEADER CUSTOM DENGAN TOMBOL BACK ---
+            // --- HEADER ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: const BoxDecoration(
-                color: Color(0xFFD6D588), // Warna Header
+                color: Color(0xFFD6D588), 
               ),
               child: Row(
                 children: [
-                  // TOMBOL KEMBALI (BACK)
                   IconButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.arrow_back),
-                    // Style tombol putih agar terlihat jelas
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white,
                       padding: const EdgeInsets.all(8),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  
-                  // JUDUL HALAMAN
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Riwayat',
-                      // textAlign: TextAlign.center, // Opsional: jika ingin judul di tengah
-                      style: TextStyle(
+                      isEnglish ? "History" : "Riwayat",
+                      style: const TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w500, // Medium (Tipis)
+                        fontWeight: FontWeight.w500,
                         color: Colors.black87,
                       ),
                     ),
                   ),
-                  
-                  // Dummy Icon agar judul benar-benar di tengah (opsional, jika pakai TextAlign.center)
-                  // const SizedBox(width: 48), 
                 ],
               ),
             ),
-            // ---------------------------------------------
 
             // CONTENT
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _buildLoadingState() // Panggil Loading Cantik
                   : _riwayatList.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.history, size: 80, color: Colors.grey),
-                              SizedBox(height: 16),
-                              Text("Belum ada riwayat deteksi", style: TextStyle(color: Colors.grey)),
+                              const Icon(Icons.history, size: 80, color: Colors.grey),
+                              const SizedBox(height: 16),
+                              Text(
+                                isEnglish ? "No detection history yet" : "Belum ada riwayat deteksi", 
+                                style: const TextStyle(color: Colors.grey)
+                              ),
                             ],
                           ),
                         )
@@ -177,7 +281,6 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             final String timestamp = item['timestamp'] ?? DateTime.now().toIso8601String();
                             final DateTime currentDate = DateTime.parse(timestamp);
 
-                            // Logika grouping tanggal
                             bool showHeader = false;
                             if (index == 0) {
                               showHeader = true;
@@ -190,11 +293,27 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                 showHeader = true;
                               }
                             }
+                            
+                            String displayName = item['nama'] ?? 'Tanpa Nama';
+                            if (isEnglish) {
+                               if (displayName == "Jalur Sepeda") displayName = "Bicycle Lane";
+                               if (displayName == "Pilih Salah Satu Jalur") displayName = "Choose One Lane";
+                               if (item.containsKey('nama_en') && item['nama_en'] != null) {
+                                 displayName = item['nama_en'];
+                               }
+                            }
+
+                            String displayKategori = item['kategori'] ?? 'Kategori';
+                             if (isEnglish) {
+                               if (displayKategori.toLowerCase().contains("perintah")) displayKategori = "Command";
+                               if (displayKategori.toLowerCase().contains("larangan")) displayKategori = "Prohibition";
+                               if (displayKategori.toLowerCase().contains("peringatan")) displayKategori = "Warning";
+                               if (displayKategori.toLowerCase().contains("petunjuk")) displayKategori = "Guidance";
+                            }
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Header Tanggal
                                 if (showHeader) ...[
                                   const SizedBox(height: 10),
                                   Row(
@@ -225,9 +344,9 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                         TextButton.icon(
                                           onPressed: _confirmDeleteAll,
                                           icon: const Icon(Icons.delete_sweep, color: Colors.red, size: 20),
-                                          label: const Text(
-                                            "Hapus Semua",
-                                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                          label: Text(
+                                            isEnglish ? "Delete All" : "Hapus Semua",
+                                            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                                           ),
                                           style: TextButton.styleFrom(
                                             padding: EdgeInsets.zero,
@@ -243,7 +362,6 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                   const SizedBox(height: 12),
                                 ],
 
-                                // Card Item
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
@@ -262,7 +380,6 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                     padding: const EdgeInsets.all(16.0),
                                     child: Row(
                                       children: [
-                                        // Box Gambar
                                         Container(
                                           width: 50,
                                           height: 50,
@@ -276,13 +393,12 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                           ),
                                         ),
                                         const SizedBox(width: 16),
-                                        // Teks
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                item['nama'] ?? 'Tanpa Nama',
+                                                displayName,
                                                 style: const TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.bold,
@@ -301,7 +417,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                                   const SizedBox(width: 4),
                                                   Flexible(
                                                     child: Text(
-                                                      item['kategori'] ?? 'Kategori',
+                                                      displayKategori,
                                                       style: TextStyle(
                                                           fontSize: 13,
                                                           color: Colors.grey.shade600),
@@ -314,9 +430,8 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                             ],
                                           ),
                                         ),
-                                        // Tombol Delete Item Satuan
                                         IconButton(
-                                          onPressed: () => _deleteItem(index),
+                                          onPressed: () => _confirmDeleteItem(index),
                                           icon: const Icon(Icons.delete_outline, color: Colors.red),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),

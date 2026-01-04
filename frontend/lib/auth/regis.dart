@@ -50,84 +50,64 @@ class _RegisPageState extends State<RegisPage> {
     super.dispose();
   }
 
+  // --- POP-UP SUKSES ---
   void _showSuccessDialog(String message) {
+    // Cek Bahasa
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        Timer(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.of(context).pop();
-            Navigator.pushReplacementNamed(context, '/login');
-          }
-        });
-
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.rectangle,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10.0,
-                  offset: Offset(0.0, 10.0),
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Color(0xFFD6D588), size: 64),
+              const SizedBox(height: 16),
+              
+              Text(
+                isEnglish ? "Registration Successful" : "Pendaftaran Berhasil",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Poppins',
+                  color: Colors.black87,
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF64B5F6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    size: 50,
-                    color: Colors.white,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontFamily: 'Poppins',
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Pendaftaran Berhasil",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
+
+    // --- TIMER 2 DETIK LALU PINDAH KE LOGIN ---
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        Navigator.of(context).pop(); 
+        Navigator.pushReplacementNamed(context, '/login'); 
+      }
+    });
   }
 
   void _handleRegistration() async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
@@ -146,14 +126,17 @@ class _RegisPageState extends State<RegisPage> {
       if (result['success']) {
         final data = result['data'];
         if (mounted) {
-          String welcomeMessage = data['message'] ?? "Selamat datang, $username!";
+          // Default message bilingual logic
+          String welcomeMessage = data['message'] ?? (isEnglish 
+              ? "Welcome, $username!" 
+              : "Selamat datang, $username!");
           _showSuccessDialog(welcomeMessage);
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? "Pendaftaran gagal!"),
+              content: Text(result['message'] ?? (isEnglish ? "Registration failed!" : "Pendaftaran gagal!")),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
@@ -167,10 +150,12 @@ class _RegisPageState extends State<RegisPage> {
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
     final double headerHeight = screenSize.height * 0.35;
+    
+    // --- DETEKSI BAHASA ---
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
 
     return Scaffold(
       backgroundColor: Colors.white,
-      // PERBAIKAN 1: Ubah ke true
       resizeToAvoidBottomInset: true,
       body: SizedBox(
         width: double.infinity,
@@ -203,18 +188,18 @@ class _RegisPageState extends State<RegisPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        "Daftar Akun",
-                        style: TextStyle(
+                      Text(
+                        isEnglish ? "Register Account" : "Daftar Akun",
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2C3E50),
                           fontFamily: 'Poppins',
                         ),
                       ),
-                      const Text(
-                        "Silakan mendaftar untuk memulai",
-                        style: TextStyle(
+                      Text(
+                        isEnglish ? "Please register to start" : "Silakan mendaftar untuk memulai",
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF555555),
                           fontFamily: 'Poppins',
@@ -232,8 +217,6 @@ class _RegisPageState extends State<RegisPage> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: Container(
-                // PERBAIKAN 2: Bungkus Form dengan SingleChildScrollView
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Form(
@@ -244,11 +227,12 @@ class _RegisPageState extends State<RegisPage> {
                         const SizedBox(height: 20),
 
                         // NAMA
-                        _buildLabel("NAMA LENGKAP"),
+                        _buildLabel(isEnglish ? "FULL NAME" : "NAMA LENGKAP"),
                         const SizedBox(height: 5),
                         _buildTextField(
                           controller: _nameController,
-                          hint: "Nama Lengkap Anda",
+                          hint: isEnglish ? "Your Full Name" : "Nama Lengkap Anda",
+                          validationMsg: isEnglish ? "Required" : "Wajib diisi",
                         ),
 
                         const SizedBox(height: 15),
@@ -258,50 +242,52 @@ class _RegisPageState extends State<RegisPage> {
                         const SizedBox(height: 5),
                         _buildTextField(
                           controller: _emailController,
-                          hint: "Email Aktif",
+                          hint: isEnglish ? "Active Email" : "Email Aktif",
                           isEmail: true,
+                          validationMsg: isEnglish ? "Required" : "Wajib diisi",
                         ),
 
                         const SizedBox(height: 15),
 
                         // PASSWORD
-                        _buildLabel("KATA SANDI"),
+                        _buildLabel(isEnglish ? "PASSWORD" : "KATA SANDI"),
                         const SizedBox(height: 5),
                         _buildPasswordField(
                           controller: _passwordController,
-                          hint: "Minimal 6 karakter",
+                          hint: isEnglish ? "Min. 6 characters" : "Minimal 6 karakter",
                           isObscure: _obscurePassword,
                           onToggle: () => setState(
                             () => _obscurePassword = !_obscurePassword,
                           ),
+                          validationMsg: isEnglish ? "Required" : "Wajib diisi",
                         ),
 
                         const SizedBox(height: 15),
 
                         // CONFIRM PASSWORD
-                        _buildLabel("KONFIRMASI SANDI"),
+                        _buildLabel(isEnglish ? "CONFIRM PASSWORD" : "KONFIRMASI SANDI"),
                         const SizedBox(height: 5),
                         _buildPasswordField(
                           controller: _confirmController,
-                          hint: "Ulangi kata sandi",
+                          hint: isEnglish ? "Repeat password" : "Ulangi kata sandi",
                           isObscure: _obscureConfirmPassword,
                           onToggle: () => setState(
                             () => _obscureConfirmPassword =
                                 !_obscureConfirmPassword,
                           ),
                           isConfirm: true,
+                          validationMsg: isEnglish ? "Required" : "Wajib diisi",
                         ),
 
-                        // PERBAIKAN 3: Ganti Spacer() dengan SizedBox agar bisa scroll
                         const SizedBox(height: 30),
 
-                        // LINK LOGIN (DI ATAS TOMBOL)
+                        // LINK LOGIN
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text(
-                              "Sudah punya akun? ",
-                              style: TextStyle(
+                            Text(
+                              isEnglish ? "Already have an account? " : "Sudah punya akun? ",
+                              style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 14,
                                 fontFamily: 'Poppins',
@@ -309,9 +295,9 @@ class _RegisPageState extends State<RegisPage> {
                             ),
                             GestureDetector(
                               onTap: () => Navigator.pushNamed(context, '/login'),
-                              child: const Text(
-                                "MASUK",
-                                style: TextStyle(
+                              child: Text(
+                                isEnglish ? "LOGIN" : "MASUK",
+                                style: const TextStyle(
                                   color: Color(0xFFD6D588),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -347,9 +333,9 @@ class _RegisPageState extends State<RegisPage> {
                                       color: Colors.black87,
                                     ),
                                   )
-                                : const Text(
-                                    "DAFTAR",
-                                    style: TextStyle(
+                                : Text(
+                                    isEnglish ? "REGISTER" : "DAFTAR",
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 1,
@@ -359,14 +345,12 @@ class _RegisPageState extends State<RegisPage> {
                           ),
                         ),
 
-                        // Tambahan padding bawah agar aman saat scroll
                         const SizedBox(height: 20),
                       ],
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -388,21 +372,23 @@ class _RegisPageState extends State<RegisPage> {
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
+    required String validationMsg,
     bool isEmail = false,
   }) {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     return TextFormField(
       controller: controller,
       keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.text,
       style: const TextStyle(fontFamily: 'Poppins', fontSize: 14),
       decoration: _inputDecoration(hint),
       validator: (value) {
-        if (value == null || value.isEmpty) return "Wajib diisi";
+        if (value == null || value.isEmpty) return validationMsg;
         if (isEmail) {
-          if (!value.contains('@')) return "Format email salah";
+          if (!value.contains('@')) return isEnglish ? "Invalid email format" : "Format email salah";
           List<String> parts = value.split('@');
           String usernamePart = parts[0];
           if (usernamePart.length < 6) {
-            return "Username email (sebelum @) min. 6 karakter";
+            return isEnglish ? "Email username must be min. 6 chars" : "Username email (sebelum @) min. 6 karakter";
           }
         }
         return null;
@@ -415,8 +401,10 @@ class _RegisPageState extends State<RegisPage> {
     required String hint,
     required bool isObscure,
     required VoidCallback onToggle,
+    required String validationMsg,
     bool isConfirm = false,
   }) {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     return TextFormField(
       controller: controller,
       obscureText: isObscure,
@@ -431,10 +419,10 @@ class _RegisPageState extends State<RegisPage> {
         ),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) return "Wajib diisi";
-        if (!isConfirm && value.length < 6) return "Min. 6 karakter";
+        if (value == null || value.isEmpty) return validationMsg;
+        if (!isConfirm && value.length < 6) return isEnglish ? "Min. 6 characters" : "Min. 6 karakter";
         if (isConfirm && value != _passwordController.text) {
-          return "Sandi tidak cocok";
+          return isEnglish ? "Passwords do not match" : "Sandi tidak cocok";
         }
         return null;
       },

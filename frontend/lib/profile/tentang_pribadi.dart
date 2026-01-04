@@ -16,7 +16,7 @@ class TentangPribadiPage extends StatefulWidget {
     required this.userId,
     this.initialNama = 'Pengguna',
     this.initialEmail = 'user@gmail.com',
-    this.initialAlamat = 'Belum ada alamat',
+    this.initialAlamat = '', // Default kosong, biar dilogika di build
     this.initialProfileImage,
     this.initialPassword = '••••••••',
   });
@@ -54,7 +54,7 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
       _email = email;
       _alamat = alamat;
       if (password != null && password.isNotEmpty) {
-        _password = '••••••••'; // Always display masked password
+        _password = '••••••••';
       }
       if (profileImage != null) {
         _profileImage = profileImage;
@@ -65,7 +65,14 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     
+    // Tentukan tampilan alamat
+    String displayAlamat = _alamat;
+    if (_alamat.isEmpty) {
+      displayAlamat = isEnglish ? 'No address set' : 'Belum ada alamat';
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -77,7 +84,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
               decoration: const BoxDecoration(color: Color(0xFFD6D588)),
               child: Row(
                 children: [
-                  // Back Button
                   IconButton(
                     onPressed: () {
                       Navigator.pop(context);
@@ -89,7 +95,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Title
                   Expanded(
                     child: Text(
                       l10n.personalInfo,
@@ -100,7 +105,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                       ),
                     ),
                   ),
-                  // Edit Button
                   TextButton(
                     onPressed: () async {
                       final result = await Navigator.push(
@@ -125,8 +129,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                           result['profileImage'] as String?,
                         );
 
-                        // PERBAIKAN: SnackBar Hijau DIHAPUS DISINI.
-                        // Hanya melakukan navigasi balik untuk update data di SettingAccPage
                         if (mounted) {
                           if (!context.mounted) return;
                           Navigator.pop(context, {
@@ -180,24 +182,15 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
                                 '${ApiService.baseUrl}$_profileImage',
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
-                                  return Icon(
-                                    Icons.person,
-                                    size: 50,
-                                    color: Colors.grey[400],
-                                  );
+                                  return Icon(Icons.person, size: 50, color: Colors.grey[400]);
                                 },
                               )
-                            : Icon(
-                                Icons.person,
-                                size: 50,
-                                color: Colors.grey[400],
-                              ),
+                            : Icon(Icons.person, size: 50, color: Colors.grey[400]),
                       ),
                     ),
 
                     const SizedBox(height: 16),
 
-                    // Name
                     Text(
                       _namaLengkap,
                       style: const TextStyle(
@@ -209,7 +202,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
 
                     const SizedBox(height: 32),
 
-                    // Information Cards
                     _buildInfoCard(
                       icon: Icons.person_outline,
                       label: l10n.fullName,
@@ -226,10 +218,11 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
 
                     const SizedBox(height: 16),
 
+                    // ALAMAT SUDAH DIPERBAIKI (Text Default Berubah)
                     _buildInfoCard(
                       icon: Icons.location_on_outlined,
                       label: l10n.address,
-                      value: _alamat,
+                      value: displayAlamat,
                     ),
 
                     const SizedBox(height: 16),
@@ -263,7 +256,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
       ),
       child: Row(
         children: [
-          // Icon
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -273,7 +265,6 @@ class _TentangPribadiPageState extends State<TentangPribadiPage> {
             child: Icon(icon, size: 24, color: Colors.black54),
           ),
           const SizedBox(width: 16),
-          // Text Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

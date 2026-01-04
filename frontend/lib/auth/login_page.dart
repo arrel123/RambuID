@@ -62,6 +62,9 @@ class _LoginPageState extends State<LoginPage> {
 
   // --- DIALOG SUKSES ---
   void _showSuccessDialog(bool isAdmin, int userId, String username) {
+    // Cek Bahasa
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -73,15 +76,17 @@ class _LoginPageState extends State<LoginPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: Color(0xFF64B5F6), size: 64),
+              const Icon(Icons.check_circle, color: Color(0xFFD6D588), size: 64),
               const SizedBox(height: 16),
-              const Text(
-                'Login Berhasil', 
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')
+              Text(
+                isEnglish ? 'Login Successful' : 'Login Berhasil', 
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')
               ),
               const SizedBox(height: 8),
               Text(
-                isAdmin ? 'Selamat datang, Admin!' : 'Selamat datang, $username!',
+                isEnglish 
+                    ? (isAdmin ? 'Welcome, Admin!' : 'Welcome, $username!')
+                    : (isAdmin ? 'Selamat datang, Admin!' : 'Selamat datang, $username!'),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
               ),
@@ -111,10 +116,12 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
     final double headerHeight = screenSize.height * 0.35; 
+    
+    // --- DETEKSI BAHASA ---
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
 
     return Scaffold(
       backgroundColor: Colors.white,
-      // PERBAIKAN 1: Ubah ke true agar layout menyesuaikan saat keyboard muncul
       resizeToAvoidBottomInset: true, 
       body: SizedBox(
         width: double.infinity,
@@ -137,8 +144,14 @@ class _LoginPageState extends State<LoginPage> {
                         child: Image.asset('assets/images/logo_rambuid.png', height: 80, width: 80),
                       ),
                       const SizedBox(height: 12),
-                      const Text('Selamat Datang', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
-                      const Text('Di RambuID', style: TextStyle(fontSize: 16, color: Color(0xFF555555))),
+                      Text(
+                        isEnglish ? 'Welcome' : 'Selamat Datang', 
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))
+                      ),
+                      Text(
+                        isEnglish ? 'To RambuID' : 'Di RambuID', 
+                        style: const TextStyle(fontSize: 16, color: Color(0xFF555555))
+                      ),
                     ],
                   ),
                 ),
@@ -148,9 +161,6 @@ class _LoginPageState extends State<LoginPage> {
             // --- FORM SECTION ---
             Positioned(
               top: headerHeight - 20, left: 0, right: 0, bottom: 0,
-              child: Container(
-                // PERBAIKAN 2: Bungkus dengan SingleChildScrollView
-                // Agar konten bisa discroll saat keyboard muncul
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
@@ -165,7 +175,7 @@ class _LoginPageState extends State<LoginPage> {
                       
                       const SizedBox(height: 20),
                       
-                      _buildLabel('KATA SANDI'),
+                      _buildLabel(isEnglish ? 'PASSWORD' : 'KATA SANDI'),
                       const SizedBox(height: 8),
                       _buildTextField(controller: _passwordController, hint: '••••••••••', icon: Icons.lock_outline, isPassword: true),
 
@@ -183,27 +193,29 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text('Ingat saya', style: TextStyle(color: Colors.grey)),
+                            Text(
+                              isEnglish ? 'Remember me' : 'Ingat saya', 
+                              style: const TextStyle(color: Colors.grey)
+                            ),
                           ],
                         ),
                       ),
 
-                      // PERBAIKAN 3: Ganti Spacer() dengan SizedBox agar tidak error di ScrollView
                       const SizedBox(height: 40), 
 
                       // --- LINK DAFTAR ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
-                            'Belum punya akun? ',
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
+                          Text(
+                            isEnglish ? 'Don\'t have an account? ' : 'Belum punya akun? ',
+                            style: const TextStyle(color: Colors.grey, fontSize: 14),
                           ),
                           GestureDetector(
                             onTap: () => Navigator.pushNamed(context, '/register'),
-                            child: const Text(
-                              'Daftar Sekarang!',
-                              style: TextStyle(
+                            child: Text(
+                              isEnglish ? 'Register Now!' : 'Daftar Sekarang!',
+                              style: const TextStyle(
                                 color: Color(0xFFD6D588),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -229,9 +241,9 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           child: _isLoading
                               ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black87))
-                              : const Text(
-                                  'MASUK', 
-                                  style: TextStyle(
+                              : Text(
+                                  isEnglish ? 'LOGIN' : 'MASUK', 
+                                  style: const TextStyle(
                                     fontSize: 16, 
                                     fontWeight: FontWeight.bold, 
                                     letterSpacing: 1
@@ -240,13 +252,11 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       
-                      // Tambahan padding bawah agar aman dari keyboard
                       const SizedBox(height: 20),
                     ],
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -277,11 +287,17 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLabel(String text) => Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1));
 
   Future<void> _handleLogin() async {
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email dan password wajib diisi'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEnglish ? 'Email and password are required' : 'Email dan password wajib diisi'), 
+          backgroundColor: Colors.red
+        )
+      );
       return;
     }
 
@@ -323,7 +339,14 @@ class _LoginPageState extends State<LoginPage> {
       
       if (mounted) _showSuccessDialog(isAdmin, userId, username);
     } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Login Gagal'), backgroundColor: Colors.red));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? (isEnglish ? 'Login Failed' : 'Login Gagal')), 
+            backgroundColor: Colors.red
+          )
+        );
+      }
     }
   }
 }

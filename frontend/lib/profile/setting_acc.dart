@@ -37,28 +37,15 @@ class _SettingAccPageState extends State<SettingAccPage> {
   Future<void> _loadUserProfile() async {
     setState(() => _isLoading = true);
 
-    // Debugging: Melihat ID yang dikirim
-    debugPrint("🔄 Loading Profile for UserID: ${widget.userId}");
-
     final result = await ApiService.getUserProfile(widget.userId);
-
-    // Debugging: Melihat hasil mentah dari API Service
-    debugPrint("📩 Result dari API: $result");
 
     if (mounted) {
       if (result['success']) {
-        // 🔥 FIX POTENSI STRUKTUR DATA BERUBAH
-        // Kadang backend teman mengembalikan { "data": { "nama_lengkap": ... } }
-        // Kadang langsung { "nama_lengkap": ... }
-        // Kita buat logika pintar untuk menangani keduanya:
-        
         dynamic profileData = result['data'];
         
-        // Cek jika profileData masih punya key 'data' lagi di dalamnya (Nested)
         if (profileData is Map<String, dynamic> && profileData.containsKey('data')) {
            profileData = profileData['data'];
         }
-        // Cek jika profileData punya key 'user' (variasi lain)
         if (profileData is Map<String, dynamic> && profileData.containsKey('user')) {
            profileData = profileData['user'];
         }
@@ -66,7 +53,8 @@ class _SettingAccPageState extends State<SettingAccPage> {
         setState(() {
           _namaLengkap = profileData['nama_lengkap'] ?? 'Pengguna';
           _email = profileData['username'] ?? widget.username;
-          _alamat = profileData['alamat'] ?? 'Belum ada alamat';
+          // FIX: Jangan hardcode 'Belum ada alamat' disini, biarkan kosong jika null
+          _alamat = profileData['alamat'] ?? ''; 
           _profileImage = profileData['profile_image'];
           _isLoading = false;
         });
@@ -74,19 +62,9 @@ class _SettingAccPageState extends State<SettingAccPage> {
         setState(() {
           _namaLengkap = 'Pengguna';
           _email = widget.username;
-          _alamat = 'Belum ada alamat';
+          _alamat = '';
           _isLoading = false;
         });
-
-        final l10n = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            // Tampilkan pesan error spesifik dari API Service
-            content: Text(result['message'] ?? l10n.profileLoadFailed),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
-        );
       }
     }
   }
@@ -105,7 +83,15 @@ class _SettingAccPageState extends State<SettingAccPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // LOGIKA BAHASA UNTUK TEXT DEFAULT
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     final Size screenSize = MediaQuery.of(context).size;
+
+    // Tentukan teks alamat yang ditampilkan
+    String displayAlamat = _alamat;
+    if (_alamat.isEmpty) {
+      displayAlamat = isEnglish ? 'No address set' : 'Belum ada alamat';
+    }
 
     if (_isLoading) {
       return const Scaffold(
@@ -137,24 +123,10 @@ class _SettingAccPageState extends State<SettingAccPage> {
               child: ClipOval(
                 child: _profileImage != null && _profileImage!.isNotEmpty
                     ? Image.network(
-                        // 🔥 FIX GAMBAR: Gunakan helper dari ApiService
                         ApiService.getImageUrl(_profileImage),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                           debugPrint("Error loading image: $error"); // Debug gambar
                            return Icon(Icons.person, size: 50, color: Colors.grey[400]);
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                              color: const Color(0xFFD6D588),
-                            ),
-                          );
                         },
                       )
                     : Icon(Icons.person, size: 50, color: Colors.grey[400]),
@@ -169,7 +141,16 @@ class _SettingAccPageState extends State<SettingAccPage> {
             ),
             const SizedBox(height: 4),
             Text(_email, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-            Text(_alamat, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            
+            // TAMPILKAN ALAMAT (Data Asli atau Text Default Bahasa Inggris/Indo)
+            Text(
+              displayAlamat, 
+              style: TextStyle(
+                fontSize: 14, 
+                color: _alamat.isEmpty ? Colors.redAccent : Colors.grey, // Merah dikit kalau kosong biar sadar
+                fontStyle: _alamat.isEmpty ? FontStyle.italic : FontStyle.normal
+              )
+            ),
 
             const SizedBox(height: 20),
             const Divider(thickness: 1, color: Color(0xFFEEEEEE)),
@@ -192,7 +173,7 @@ class _SettingAccPageState extends State<SettingAccPage> {
                             userId: widget.userId,
                             initialNama: _namaLengkap,
                             initialEmail: _email,
-                            initialAlamat: _alamat,
+                            initialAlamat: _alamat, // Kirim data asli (bisa kosong)
                             initialProfileImage: _profileImage,
                           ),
                         ),

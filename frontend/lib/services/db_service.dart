@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart'; // Untuk debugPrint
 import 'package:http/http.dart' as http;
 
 class DbService {
-  // === KONFIGURASI SERVER ===
-  // Pastikan IP ini sesuai dengan yang ada di api_service.dart atau IP Laptop kamu
-  static const String baseUrl = 'http://192.168.1.3:8000'; 
+  // === KONFIGURASI SERVER VPS NAT ===
+  // UPDATE: Pastikan IP dan Port ini sesuai dengan yang di api_service.dart
+  static const String baseUrl = 'http://151.243.222.93:56789'; 
 
   // === DATA CADANGAN (FIXED DATA) ===
   // Diambil dari kodingan Stash kamu.
